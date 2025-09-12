@@ -13,6 +13,7 @@ interface ModalProps {
   productImage: string;
   productTitle: string;
   productPrice: string;
+  productData?: any;
 }
 
 const ProductDetails: React.FC<ModalProps> = ({
@@ -21,6 +22,7 @@ const ProductDetails: React.FC<ModalProps> = ({
   productImage,
   productTitle,
   productPrice,
+  productData,
 }) => {
   const [quantity, setQuantity] = useState(1);
   const [activeTab, setActiveTab] = useState<string>("tab1");

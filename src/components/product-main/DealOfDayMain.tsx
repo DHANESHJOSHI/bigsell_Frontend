@@ -52,7 +52,7 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
         });
     };
 
-    const { addToWishlist } = useWishlist();
+    const { addToWishlist } = useCart();
     const handleWishlist = () => {
         addToWishlist({
             id: Date.now(),

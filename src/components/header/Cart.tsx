@@ -12,7 +12,10 @@ const CartDropdown: React.FC = () => {
   const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
   const activeItems = safeCartItems.filter((item) => item.active);
   const total = activeItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => {
+      const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+      return sum + (isNaN(price) ? 0 : price * item.quantity);
+    },
     0
   );
   const freeShippingThreshold = 125;
@@ -63,7 +66,7 @@ const CartDropdown: React.FC = () => {
                 </Link>
                 <div className="number">
                   {item.quantity} <i className="fa-regular fa-x" />
-                  <span>₹ {(item.price * item.quantity).toFixed(2)}</span>
+                  <span>₹ {((typeof item.price === 'string' ? parseFloat(item.price) : item.price) * item.quantity).toFixed(2)}</span>
                 </div>
               </div>
             </div>

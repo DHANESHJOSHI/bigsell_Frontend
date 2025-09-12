@@ -100,7 +100,7 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
         setTimeout(() => setAdded(false), 5000);
     };
 
-    const { addToWishlist } = useWishlist();
+    const { addToWishlist } = useCart();
     const handleWishlist = () => {
         addToWishlist({
             id: Date.now(),

@@ -36,7 +36,7 @@ const FeaturedGlosary: React.FC<BlogGridMainProps> = ({
   const handleClose = () => setActiveModal(null);
 
   const { addToCart } = useCart();
-  const { addToWishlist } = useWishlist();
+  const { addToWishlist } = useCart();
   const { addToCompare } = useCompare();
 
   const [added, setAdded] = useState(false);

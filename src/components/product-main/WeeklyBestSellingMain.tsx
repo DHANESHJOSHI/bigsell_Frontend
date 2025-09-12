@@ -10,6 +10,7 @@ import { useCompare } from "@/components/header/CompareContext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Image from "next/image";
+import { IProducts } from "@/store/productApi";
 
 interface BlogGridMainProps {
   Slug: string;
@@ -18,6 +19,7 @@ interface BlogGridMainProps {
   Price?: string;
   del?: string;
   material?: string;
+  productData?: IProducts;
 }
 
 const BlogGridMain: React.FC<BlogGridMainProps> = ({
@@ -27,13 +29,14 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
   Price,
   del,
   material,
+  productData,
 }) => {
   type ModalType = "one" | "two" | "three" | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const handleClose = () => setActiveModal(null);
 
   const { addToCart } = useCart();
-  const { addToWishlist } = useWishlist();
+  const { addToWishlist } = useCart();
   const { addToCompare } = useCompare();
 
   const [added, setAdded] = useState(false);
@@ -42,7 +45,8 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
   const handleAdd = () => {
     addToCart({
       id: Date.now(),
-      image: `/assets/images/bestSelling/${ProductImage}`,
+      productId: productData?._id,
+      image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/bestSelling/${ProductImage}`,
       title: ProductTitle ?? "Default Product Title",
       price: parseFloat(Price ?? "0"),
       quantity: 1,
@@ -55,10 +59,12 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
   const handleWishlist = () => {
     addToWishlist({
       id: Date.now(),
-      image: `/assets/images/bestSelling/${ProductImage}`,
+      productId: productData?._id,
+      image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/bestSelling/${ProductImage}`,
       title: ProductTitle ?? "Default Product Title",
       price: parseFloat(Price ?? "0"),
       quantity: 1,
+      active: false,
     });
     setWishlisted(true);
     setTimeout(() => setWishlisted(false), 3000);

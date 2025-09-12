@@ -29,6 +29,8 @@ interface PostType {
   originalPrice?: string;
   discount?: number;
   discountType?: "percentage" | "fixed";
+  color?: any;
+  size?: any;
 }
 
 // Transform API product to PostType for compatibility
@@ -70,6 +72,9 @@ const transformProductToPost = (product: any): PostType => {
     price: price.toString(),
     originalPrice: originalPrice.toString(),
     discount: discount,
+    discountType: product.discountType || "percentage",
+    color: product.colors || [],
+    size: product.sizes || [],
   };
 };
 

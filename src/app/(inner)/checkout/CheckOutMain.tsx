@@ -39,7 +39,10 @@ export default function CheckOutMain() {
   // Ensure cartItems is always an array
   const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
   const subtotal = safeCartItems.reduce(
-    (sum, item) => sum + item.price * item.quantity,
+    (sum, item) => {
+      const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
+      return sum + (isNaN(price) ? 0 : price * item.quantity);
+    },
     0
   );
   const discountAmount = subtotal * discount;
@@ -180,7 +183,7 @@ export default function CheckOutMain() {
                       </span>
                     </div>
                     <span className="price">
-                      ₹ {(item.price * item.quantity).toFixed(2)}
+                      ₹ {((typeof item.price === 'string' ? parseFloat(item.price) : item.price) * item.quantity).toFixed(2)}
                     </span>
                   </div>
                 ))
