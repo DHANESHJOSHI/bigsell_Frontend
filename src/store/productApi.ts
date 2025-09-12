@@ -195,6 +195,57 @@ export const productsApi = createApi({
           : [newArrivalsTag()],
     }),
 
+    // Weekly best selling products
+    getWeeklyBestSellingProducts: builder.query<IProducts[], number | void>({
+      query: (limit) => {
+        const params = limit ? `?limit=${limit}` : '';
+        return `/products/weekly-best-selling${params}`;
+      },
+      transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
+        normalizeToArray(response?.data),
+      providesTags: (result) =>
+        result && result.length
+          ? [
+            productTag("WEEKLY_BESTSELLING"),
+            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+          ]
+          : [productTag("WEEKLY_BESTSELLING")],
+    }),
+
+    // Discount products
+    getDiscountProducts: builder.query<IProducts[], number | void>({
+      query: (limit) => {
+        const params = limit ? `?limit=${limit}` : '';
+        return `/products/discount${params}`;
+      },
+      transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
+        normalizeToArray(response?.data),
+      providesTags: (result) =>
+        result && result.length
+          ? [
+            productTag("DISCOUNT"),
+            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+          ]
+          : [productTag("DISCOUNT")],
+    }),
+
+    // Weekly discount products
+    getWeeklyDiscountProducts: builder.query<IProducts[], number | void>({
+      query: (limit) => {
+        const params = limit ? `?limit=${limit}` : '';
+        return `/products/weekly-discount${params}`;
+      },
+      transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
+        normalizeToArray(response?.data),
+      providesTags: (result) =>
+        result && result.length
+          ? [
+            productTag("WEEKLY_DISCOUNT"),
+            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+          ]
+          : [productTag("WEEKLY_DISCOUNT")],
+    }),
+
     // Product filters
     getProductFilters: builder.query<any, void>({
       query: () => "/products/filters",
@@ -256,6 +307,9 @@ export const {
   useGetFeaturedProductsQuery,
   useGetTrendingProductsQuery,
   useGetNewArrivalsQuery,
+  useGetWeeklyBestSellingProductsQuery,
+  useGetDiscountProductsQuery,
+  useGetWeeklyDiscountProductsQuery,
   useGetProductFiltersQuery,
   useGetProductsByCategoryQuery,
   useUpdateProductMutation,

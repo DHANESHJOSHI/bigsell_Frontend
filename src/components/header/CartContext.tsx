@@ -6,7 +6,7 @@ interface CartItem {
   id: number | string;
   image: string;
   title: string;
-  price: number;
+  price: number | string;
   quantity: number;
   active: boolean; // true = cart, false = wishlist
   productId?: string; // Add product ID for better identification
@@ -16,8 +16,8 @@ interface CartContextProps {
   cartItems: CartItem[];
   addToCart: (item: CartItem) => void;
   addToWishlist: (item: CartItem) => void;
-  removeFromCart: (id: number) => void;
-  updateItemQuantity: (id: number, quantity: number) => void;
+  removeFromCart: (id: number | string) => void;
+  updateItemQuantity: (id: number | string, quantity: number) => void;
   isCartLoaded: boolean;
 }
 
@@ -95,12 +95,12 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Remove item by ID
-  const removeFromCart = (id: number) => {
+  const removeFromCart = (id: number | string) => {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
   };
 
   // Update quantity (cart or wishlist)
-  const updateItemQuantity = (id: number, quantity: number) => {
+  const updateItemQuantity = (id: number | string, quantity: number) => {
     setCartItems((prev) =>
       prev.map((item) =>
         item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item

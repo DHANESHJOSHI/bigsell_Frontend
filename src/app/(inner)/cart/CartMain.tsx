@@ -15,8 +15,8 @@ const CartMain = () => {
     // Ensure cartItems is always an array
     const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
     const total = safeCartItems.reduce((acc, item) => {
-      const price = item.price;
-      console.log(price);
+      // Convert string price to number
+      const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
       const quantity = item.quantity || 1;
       return acc + (isNaN(price) ? 0 : price * quantity);
     }, 0);
@@ -121,7 +121,7 @@ const CartMain = () => {
                         </div>
                       </div>
                       <div className="price">
-                        <p>₹ {item.price.toFixed(2)}</p>
+                        <p>₹ {(typeof item.price === 'string' ? parseFloat(item.price) : item.price).toFixed(2)}</p>
                       </div>
                       <div className="quantity">
                         <div className="quantity-edit">
@@ -153,7 +153,7 @@ const CartMain = () => {
                         </div>
                       </div>
                       <div className="subtotal">
-                        <p>₹ {(item.price * item.quantity).toFixed(2)}</p>
+                        <p>₹ {((typeof item.price === 'string' ? parseFloat(item.price) : item.price) * item.quantity).toFixed(2)}</p>
                       </div>
                     </div>
                   ))

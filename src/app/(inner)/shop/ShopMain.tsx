@@ -18,6 +18,9 @@ interface BlogGridMainProps {
   Price?: string;
   OriginalPrice?: string;
   Discount?: number;
+  DiscountType?: "fixed" | "percentage";
+  Color?: any;
+  Size?: any;
 }
 
 const BlogGridMain: React.FC<BlogGridMainProps> = ({

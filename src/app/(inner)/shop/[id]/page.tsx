@@ -114,11 +114,11 @@ const CompareElements: React.FC = () => {
     else setActiveImage(null);
 
     if (product.colors && product.colors.length > 0) {
-      setSelectedColor((prev) => prev ?? String(product.colors[0]));
+      setSelectedColor((prev) => prev ?? String(product.colors![0]));
     } else setSelectedColor(null);
 
     if (product.sizes && product.sizes.length > 0) {
-      setSelectedSize((prev) => prev ?? String(product.sizes[0]));
+      setSelectedSize((prev) => prev ?? String(product.sizes![0]));
     } else setSelectedSize(null);
 
     if (typeof product.stock === "number" && product.stock < quantity) {
@@ -293,10 +293,11 @@ const CompareElements: React.FC = () => {
                               className="product-catagory"
                               style={{ display: "inline-block" }}
                             >
-                              {product.category?.title ??
-                                (typeof product.category === "string"
-                                  ? product.category
-                                  : "General")}
+                              {typeof product.category === "object" && product.category?.title
+                                ? product.category.title
+                                : typeof product.category === "string"
+                                ? product.category
+                                : "General"}
                             </span>
                           </div>
                           <h2 className="product-title">{product.name}</h2>
