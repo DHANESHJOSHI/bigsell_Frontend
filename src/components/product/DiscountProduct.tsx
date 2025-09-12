@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect } from "react";
 import DiscountProductMain from "@/components/product-main/DiscountProductMain";
-import Product from "@/data/discountProduct.json";
+import { useGetDiscountProductsQuery, IProducts } from "@/store/productApi";
 import Link from "next/link";
 interface PostType {
   category?: string;
@@ -16,23 +16,86 @@ interface PostType {
 }
 
 function DiscountProduct() {
-  // product content
-  const selectedPosts = Product.slice(1, 11);
+  // Fetch discount products from API
+  const { data: discountProducts = [], isLoading, error } = useGetDiscountProductsQuery();
 
+  // Transform API products to PostType format
+  const transformProductToPost = (product: IProducts): PostType => {
+    // Handle specifications - can be array or object
+    let material = product.brand || "";
+    if (product.specifications) {
+      if (Array.isArray(product.specifications)) {
+        const materialSpec = product.specifications.find(spec => spec.key.toLowerCase() === 'material');
+        material = materialSpec?.value || product.brand || "";
+      } else if (typeof product.specifications === 'object') {
+        material = (product.specifications as any).Material || product.brand || "";
+      }
+    }
+
+    return {
+      slug: product.slug || product.name?.toLowerCase().replace(/\s+/g, "-") || "",
+      image: product.thumbnail || product.images?.[0] || "",
+      title: product.name || "",
+      price: product.price?.toString() || "0",
+      del: product.originalPrice?.toString() || "",
+      material,
+      category: typeof product.category === "object" ? product.category?.title : product.category,
+    };
+  };
+
+  const selectedPosts = discountProducts.slice(0, 10).map(transformProductToPost);
+
+  // Create sections from available products (repeat products if needed)
+  const createSection = (count: number) => {
+    const section = [];
+    for (let i = 0; i < count; i++) {
+      section.push(selectedPosts[i % selectedPosts.length]);
+    }
+    return section.filter(Boolean);
+  };
+
+  const getPostsByIndices = (indices: number[]): PostType[] => createSection(indices.length);
+
+  // Define section sizes
   const postIndicesSection1 = [0, 1, 2, 3];
-  const postIndicesSection2 = [5, 6, 4, 7, 8, 5, 6, 5, 8, 9, 18, 12];
-  const postIndicesSection3 = [5, 6, 8, 7, 3, 2, 1, 5, 8, 9, 13, 2];
-  const postIndicesSection4 = [1, 2, 6, 7, 10, 2, 1, 5, 8, 11, 12, 16];
-
-  // Helper function to get posts from indices
-  const getPostsByIndices = (indices: number[]): PostType[] =>
-    indices.map((index) => Product[index]).filter(Boolean);
+  const postIndicesSection2 = [5, 6, 4, 7, 8, 5, 6, 5, 8, 9, 10, 11];
+  const postIndicesSection3 = [5, 6, 8, 7, 3, 2, 1, 5, 8, 9, 10, 2];
+  const postIndicesSection4 = [1, 2, 6, 7, 8, 2, 1, 5, 8, 9, 10, 11];
 
   // Prepare post groups
   const postsSection1 = getPostsByIndices(postIndicesSection1);
   const postsSection2 = getPostsByIndices(postIndicesSection2);
   const postsSection3 = getPostsByIndices(postIndicesSection3);
   const postsSection4 = getPostsByIndices(postIndicesSection4);
+
+  // Handle loading and error states
+  if (isLoading) {
+    return (
+      <div className="rts-grocery-feature-area rts-section-gapBottom">
+        <div className="container">
+          <div className="row">
+            <div className="col-lg-12 text-center">
+              <p>Loading discount products...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="rts-grocery-feature-area rts-section-gapBottom">
+        <div className="container">
+          <div className="row">
+            <div className="col-lg-12 text-center">
+              <p>Error loading discount products. Please try again later.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
