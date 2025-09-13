@@ -168,8 +168,11 @@ export const productsApi = createApi({
     }),
 
     // Trending products
-    getTrendingProducts: builder.query<IProducts[], void>({
-      query: () => "/products/trending",
+    getTrendingProducts: builder.query<IProducts[], number | void>({
+      query: (limit) => {
+        const params = limit ? `?limit=${limit}` : '';
+        return `/products/trending${params}`;
+      },
       transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
         normalizeToArray(response?.data),
       providesTags: (result) =>

@@ -1,9 +1,69 @@
-"use clients";
+"use client";
 import Image from "next/image";
 import Link from "next/link";
 import React from "react";
+import { useGetTrendingProductsQuery, IProducts } from "@/store/productApi";
 
-function TrandingProduct() {
+interface TrendingProductProps {
+  limit?: number;
+}
+
+function TrandingProduct({ limit = 8 }: TrendingProductProps) {
+  // Fetch trending products from API
+  const {
+    data: trendingProducts = [],
+    isLoading,
+    error,
+  } = useGetTrendingProductsQuery(limit);
+
+  // Handle loading state
+  if (isLoading) {
+    return (
+      <div className="top-tranding-product rts-section-gap">
+        <div className="container">
+          <div className="row">
+            <div className="col-lg-12 text-center">
+              <h2 className="title-left mb--10">Top Trending Products</h2>
+              <p>Loading trending products...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle error state
+  if (error) {
+    return (
+      <div className="top-tranding-product rts-section-gap">
+        <div className="container">
+          <div className="row">
+            <div className="col-lg-12 text-center">
+              <h2 className="title-left mb--10">Top Trending Products</h2>
+              <p>Error loading trending products. Please try again later.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Handle empty state
+  if (trendingProducts.length === 0) {
+    return (
+      <div className="top-tranding-product rts-section-gap">
+        <div className="container">
+          <div className="row">
+            <div className="col-lg-12 text-center">
+              <h2 className="title-left mb--10">Top Trending Products</h2>
+              <p>No trending products available at the moment.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <>
@@ -14,6 +74,12 @@ function TrandingProduct() {
               <div className="col-lg-12">
                 <div className="title-area-between">
                   <h2 className="title-left mb--10">Top Trending Products</h2>
+                  <Link
+                    href="/shop?filter=trending"
+                    className="btn btn-outline-primary"
+                  >
+                    View All Trending
+                  </Link>
                 </div>
               </div>
             </div>
@@ -21,343 +87,99 @@ function TrandingProduct() {
               <div className="col-lg-12">
                 <div className="cover-card-main-over">
                   <div className="row g-4">
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/grocery/07.jpg"
-                              alt="grocery"
-                              width={100}
-                              height={100}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title">Pastine Mellin Filid</h4>
-                          </Link>
-                          <span className="availability">500g Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 360.00</span>
-                            <div className="previous">₹ 400.00</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                              display: "flex",
-                              justifyContent: "center",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/grocery/1.jpg"
-                              alt="grocery"
-                              width={80}
-                              height={80}
-                              style={{
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title">Titan Gents Watch</h4>
-                          </Link>
-                          <span className="availability"> 1 Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 3600.00</span>
-                            <div className="previous">₹ 4000.00</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                              display: "flex",
-                              justifyContent: "center",
-                              alignItems: "center",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/discount-product/2.jpg"
-                              alt="grocery"
-                              width={100}
-                              height={100}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title">Campus Sport Shoes</h4>
-                          </Link>
-                          <span className="availability"> 1 Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 200.00</span>
-                            <div className="previous">₹ 500.00</div>
+                    {trendingProducts.map(
+                      (product: IProducts, index: number) => (
+                        <div
+                          key={product._id || index}
+                          className="col-xl-3 col-md-6 col-sm-12 col-6"
+                        >
+                          <div className="single-shopping-card-one tranding-product">
+                            <Link
+                              href={`/shop/${product._id}`}
+                              className="thumbnail-preview"
+                            >
+                              {product.discount && product.discount > 0 && (
+                                <div className="badge">
+                                  <span>
+                                    {product.discount}
+                                    {/* {product.discountType === "percentage" ? "%" : "₹"} <br />
+                                  Off */}
+                                  </span>
+                                  <i className="fa-solid fa-bookmark" />
+                                </div>
+                              )}
+                              <div
+                                style={{
+                                  width: "100%",
+                                  height: "100px",
+                                  display: "flex",
+                                  justifyContent: "center",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <Image
+                                  src={
+                                    product.thumbnail ||
+                                    product.images?.[0] ||
+                                    "/assets/images/grocery/default.jpg"
+                                  }
+                                  alt={product.name}
+                                  width={100}
+                                  height={100}
+                                  style={{
+                                    width: "100%",
+                                    height: "100%",
+                                    objectFit: "contain",
+                                  }}
+                                />
+                              </div>
+                            </Link>
+                            <div className="body-content">
+                              <Link href={`/shop/${product._id}`}>
+                                <h4 className="title">{product.name}</h4>
+                              </Link>
+                              <span className="availability">
+                                {product.brand ||
+                                  product.subcategory ||
+                                  "Available"}
+                                {product.weight && ` - ${product.weight}g`}
+                              </span>
+                              <div className="price-area">
+                                <span className="current">
+                                  ₹ {product.price.toFixed(2)}
+                                </span>
+                                {product.originalPrice &&
+                                  product.originalPrice > product.price && (
+                                    <div className="previous">
+                                      ₹ {product.originalPrice.toFixed(2)}
+                                    </div>
+                                  )}
+                              </div>
+                              {product.rating && (
+                                <div className="rating-area">
+                                  <div className="stars">
+                                    {[...Array(5)].map((_, i) => (
+                                      <i
+                                        key={i}
+                                        className={`fa-solid fa-star ${
+                                          i < Math.floor(product.rating || 0)
+                                            ? "active"
+                                            : ""
+                                        }`}
+                                      />
+                                    ))}
+                                  </div>
+                                  <span className="rating-count">
+                                    {product.rating.toFixed(1)} (
+                                    {product.reviewCount || 0})
+                                  </span>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </div>
-
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/grocery/01.jpg"
-                              alt="grocery"
-                              width={100}
-                              height={100}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title">Pastine Mellin Filid</h4>
-                          </Link>
-                          <span className="availability">500g Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 360.00</span>
-                            <div className="previous">₹ 400.00</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/discount-product/5.webp"
-                              alt="grocery"
-                              width={100}
-                              height={100}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title"> Shampoo pack of 200 ml</h4>
-                          </Link>
-                          <span className="availability"> 200 ml Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 220.00</span>
-                            <div className="previous">₹ 250.00</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/discount-product/4.jpg"
-                              alt="grocery"
-                              width={100}
-                              height={100}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title"> Shampoo Head & Shoulder</h4>
-                          </Link>
-                          <span className="availability"> 200 ml Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 320.00</span>
-                            <div className="previous">₹ 350.00</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/grocery/07.jpg"
-                              alt="grocery"
-                              width={100}
-                              height={100}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title">Pastine Mellin Filid</h4>
-                          </Link>
-                          <span className="availability">500g Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 360.00</span>
-                            <div className="previous">₹ 400.00</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="col-xl-3 col-md-6 col-sm-12 col-6">
-                      <div className="single-shopping-card-one tranding-product">
-                        <Link href="/shop" className="thumbnail-preview">
-                          <div className="badge">
-                            <span>
-                              25% <br />
-                              Off
-                            </span>
-                            <i className="fa-solid fa-bookmark" />
-                          </div>
-                          <div
-                            style={{
-                              width: "100%",
-                              height: "100px",
-                            }}
-                          >
-                            <Image
-                              src="/assets/images/discount-product/3.jpg"
-                              alt="grocery"
-                              width={100}
-                              height={100}
-                              style={{
-                                width: "100%",
-                                height: "100%",
-                                objectFit: "contain",
-                              }}
-                            />
-                          </div>
-                        </Link>
-                        <div className="body-content">
-                          <Link href="/shop">
-                            <h4 className="title">Perfume for Men</h4>
-                          </Link>
-                          <span className="availability"> 200 ml Pack</span>
-                          <div className="price-area">
-                            <span className="current">₹ 520.00</span>
-                            <div className="previous">₹ 850.00</div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                      )
+                    )}
                   </div>
                 </div>
               </div>

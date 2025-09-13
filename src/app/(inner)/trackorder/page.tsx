@@ -24,7 +24,7 @@ export default function Home() {
               <div className="navigator-breadcrumb-wrapper">
                 <a href="/">Home</a>
                 <i className="fa-regular fa-chevron-right" />
-                <a className="current" href="index.html">
+                <a className="current" href="/">
                   Trac Order
                 </a>
               </div>

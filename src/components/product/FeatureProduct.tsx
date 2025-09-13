@@ -14,11 +14,7 @@ function FeatureProduct() {
   } = useGetFeaturedProductsQuery();
 
   // Debug logging
-  useEffect(() => {
-    if (featuredProducts.length > 0) {
-      console.log("Featured Products Data:", featuredProducts);
-    }
-  }, [featuredProducts]);
+  useEffect(() => {}, [featuredProducts]);
 
   // number count up and down
   useEffect(() => {
@@ -180,8 +176,8 @@ function FeatureProduct() {
                               : undefined
                           }
                           DiscountProduct={product.discount}
-                           productData={product}
-                         />
+                          productData={product}
+                        />
                       </div>
                     </SwiperSlide>
                   ))}

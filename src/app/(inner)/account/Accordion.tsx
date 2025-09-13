@@ -1,10 +1,125 @@
+// components/account/AccountTabs.jsx
 "use client";
 
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useState } from "react";
+import axios from "axios";
+import { useRouter } from "next/navigation";
+
+const API =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "https://bigsell-backend.vercel.app/v1/api";
 
 const AccountTabs = () => {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState("track");
+
+  const [user, setUser] = useState(null);
+  const [orders, setOrders] = useState([]);
+  const [addresses, setAddresses] = useState({ billing: null, shipping: null });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  // helper to attach token
+  const getAuthHeaders = (token) => ({
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+    },
+  });
+
+  useEffect(() => {
+    const token = typeof window !== "undefined" && localStorage.getItem("authToken");
+
+    if (!token) {
+      // no token — redirect to login
+      router.push("/login");
+      return;
+    }
+
+    let cancelled = false;
+
+    const fetchAll = async () => {
+      setLoading(true);
+      setError("");
+
+      try {
+        // Fetch user profile (adjust endpoint to match your backend)
+        const [{ data: userData }, { data: ordersData }] = await Promise.all([
+          axios.get(`${API}/auth/me`, getAuthHeaders(token)),
+          axios.get(`${API}/orders`, getAuthHeaders(token)), // adjust if orders endpoint is different
+        ]);
+
+        if (cancelled) return;
+
+        setUser(userData?.user || userData); // adapt to your API response shape
+        setOrders(
+          Array.isArray(ordersData?.orders) ? ordersData.orders : ordersData
+        );
+
+        // If address is part of user, set addresses; else update from separate endpoint
+        if (userData?.user?.billing || userData?.user?.shipping) {
+          setAddresses({
+            billing: userData.user.billing || null,
+            shipping: userData.user.shipping || null,
+          });
+        } else {
+          // optional: try fetch addresses endpoint if available
+          try {
+            const addrRes = await axios.get(
+              `${API}/users/addresses`,
+              getAuthHeaders(token)
+            );
+            if (!cancelled) {
+              setAddresses({
+                billing: addrRes.data.billing || null,
+                shipping: addrRes.data.shipping || null,
+              });
+            }
+          } catch (addrErr) {
+            // ignore if endpoint not present
+          }
+        }
+      } catch (err: any) {
+        console.error("Account fetch error:", err);
+        // If 401/403 -> token expired or invalid. Clear token and redirect to login.
+        const status = err?.response?.status;
+        if (status === 401 || status === 403) {
+          localStorage.removeItem("authToken");
+          router.push("/login");
+          return;
+        }
+        setError(
+          err?.response?.data?.message || "Failed to load account data."
+        );
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchAll();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
+
+  const handleLogout = () => {
+    localStorage.removeItem("authToken");
+    // If you use server-side session or refresh token, call signout endpoint here
+    router.push("/login");
+  };
+
+  // If still loading, show minimal loader
+  if (loading) {
+    return (
+      <div className="account-tab-area-start rts-section-gap">
+        <div className="container-2">
+          <div>Loading account…</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="account-tab-area-start rts-section-gap">
@@ -51,19 +166,29 @@ const AccountTabs = () => {
               >
                 <i className="fa-regular fa-user"></i> Account Details
               </button>
-              <button className="nav-link">
-                <a href="/login">
-                  <i className="fa-light fa-right-from-bracket"></i> Log Out
-                </a>
+              <button className="nav-link" onClick={handleLogout}>
+                <span>
+                  <i className="fa-light fa-right-from-bracket" /> Log Out
+                </span>
               </button>
             </div>
           </div>
+
           <div className="col-lg-9 pl--50 pl_md--10 pl_sm--10 pt_md--30 pt_sm--30">
             <div className="tab-content">
+              {error && (
+                <div className="alert alert-danger" role="alert">
+                  {error}
+                </div>
+              )}
+
               {activeTab === "dashboard" && (
                 <div className="dashboard-account-area">
                   <h2 className="title">
-                    Hello Raisa! (Not Raisa?) <a href="/login">Log Out.</a>
+                    Hello {user?.firstName || user?.name || "Customer"}!{" "}
+                    <a href="#" onClick={handleLogout}>
+                      Log Out.
+                    </a>
                   </h2>
                   <p className="disc">
                     From your account dashboard you can view your recent orders,
@@ -88,39 +213,36 @@ const AccountTabs = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>#1357</td>
-                          <td>March 45, 2020</td>
-                          <td>Processing</td>
-                          <td>₹ 125.00 for 2 item</td>
-                          <td>
-                            <Link href="shop" className="btn-small d-block">
-                              View
-                            </Link>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>#2468</td>
-                          <td>June 29, 2020</td>
-                          <td>Completed</td>
-                          <td>₹ 364.00 for 5 item</td>
-                          <td>
-                            <Link href="#" className="btn-small d-block">
-                              View
-                            </Link>
-                          </td>
-                        </tr>
-                        <tr>
-                          <td>#2366</td>
-                          <td>August 02, 2020</td>
-                          <td>Completed</td>
-                          <td>₹ 280.00 for 3 item</td>
-                          <td>
-                            <Link href="#" className="btn-small d-block">
-                              View
-                            </Link>
-                          </td>
-                        </tr>
+                        {orders && orders.length > 0 ? (
+                          orders.map((o) => (
+                            <tr key={o._id || o.id}>
+                              <td>{o.orderNumber || `#${o._id?.slice(-6)}`}</td>
+                              <td>
+                                {new Date(o.createdAt).toLocaleDateString()}
+                              </td>
+                              <td>{o.status}</td>
+                              <td>
+                                {o.total
+                                  ? `₹ ${o.total} for ${
+                                      o.items?.length || 0
+                                    } item(s)`
+                                  : "-"}
+                              </td>
+                              <td>
+                                <Link
+                                  href={`/orders/${o._id}`}
+                                  className="btn-small d-block"
+                                >
+                                  View
+                                </Link>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={5}>No orders found.</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -135,10 +257,18 @@ const AccountTabs = () => {
                     OrderID in the designated box below and click the "Track"
                     button.
                   </p>
-                  <form className="order-tracking">
+                  <form
+                    className="order-tracking"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const id = e.currentTarget.elements["orderId"]?.value;
+                      if (id) router.push(`/track/${id}`);
+                    }}
+                  >
                     <div className="single-input">
                       <label>Order Id</label>
                       <input
+                        name="orderId"
                         type="text"
                         placeholder="Found in your order confirmation email"
                         required
@@ -147,6 +277,7 @@ const AccountTabs = () => {
                     <div className="single-input">
                       <label>Billing email</label>
                       <input
+                        name="billingEmail"
                         type="email"
                         placeholder="Email You use during checkout"
                       />
@@ -163,46 +294,76 @@ const AccountTabs = () => {
                   <div className="half">
                     <h2 className="title">Billing Address</h2>
                     <p className="address">
-                      3522 Interstate <br />
-                      75 Business Spur, <br />
-                      Sault Ste. <br />
-                      Marie, MI 49783 <br />
-                      New York
+                      {addresses.billing ? (
+                        <>
+                          {addresses.billing.line1} <br />
+                          {addresses.billing.city}, {addresses.billing.state}{" "}
+                          <br />
+                          {addresses.billing.postalCode} <br />
+                          {addresses.billing.country}
+                        </>
+                      ) : (
+                        <>No billing address found.</>
+                      )}
                     </p>
-                    <a href="#">Edit</a>
+                    <a href="/account/edit-address">Edit</a>
                   </div>
                   <div className="half">
                     <h2 className="title">Shipping Address</h2>
                     <p className="address">
-                      3522 Interstate <br />
-                      75 Business Spur, <br />
-                      Sault Ste. <br />
-                      Marie, MI 49783 <br />
-                      New York
+                      {addresses.shipping ? (
+                        <>
+                          {addresses.shipping.line1} <br />
+                          {addresses.shipping.city}, {addresses.shipping.state}{" "}
+                          <br />
+                          {addresses.shipping.postalCode} <br />
+                          {addresses.shipping.country}
+                        </>
+                      ) : (
+                        <>No shipping address found.</>
+                      )}
                     </p>
-                    <a href="#">Edit</a>
+                    <a href="/account/edit-address">Edit</a>
                   </div>
                 </div>
               )}
 
               {activeTab === "account" && (
-                <form className="account-details-area">
+                <form
+                  className="account-details-area"
+                  onSubmit={(e) => e.preventDefault()}
+                >
                   <h2 className="title">Account Details</h2>
                   <div className="input-half-area">
                     <div className="single-input">
-                      <input type="text" placeholder="First Name" />
+                      <input
+                        type="text"
+                        placeholder="First Name"
+                        defaultValue={user?.firstName || ""}
+                      />
                     </div>
                     <div className="single-input">
-                      <input type="text" placeholder="Last Name" />
+                      <input
+                        type="text"
+                        placeholder="Last Name"
+                        defaultValue={user?.lastName || ""}
+                      />
                     </div>
                   </div>
-                  <input type="text" placeholder="Display Name" required />
-                  <input type="email" placeholder="Email Address *" required />
                   <input
-                    type="password"
-                    placeholder="Current Password *"
+                    type="text"
+                    placeholder="Display Name"
+                    defaultValue={user?.displayName || user?.name || ""}
                     required
                   />
+                  <input
+                    type="email"
+                    placeholder="Email Address *"
+                    defaultValue={user?.email || ""}
+                    required
+                    readOnly
+                  />
+                  <input type="password" placeholder="Current Password *" />
                   <input type="password" placeholder="New Password *" />
                   <input type="password" placeholder="Confirm Password *" />
                   <button className="rts-btn btn-primary">Save Change</button>

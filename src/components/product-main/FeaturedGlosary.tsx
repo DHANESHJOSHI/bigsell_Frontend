@@ -237,9 +237,15 @@ const FeaturedGlosary: React.FC<BlogGridMainProps> = ({
       <ProductDetails
         show={activeModal === "two"}
         handleClose={handleClose}
-        productImage={productData?.thumbnail || productData?.images?.[0] || ProductImage}
-        productTitle={productData?.name || ProductTitle || "Default Product Title"}
-        productPrice={productData?.price ? `₹${productData.price}` : `₹${Price || "0"}`}
+        productImage={
+          productData?.thumbnail || productData?.images?.[0] || ProductImage
+        }
+        productTitle={
+          productData?.name || ProductTitle || "Default Product Title"
+        }
+        productPrice={
+          productData?.price ? `₹${productData.price}` : `₹${Price || "0"}`
+        }
         productData={productData}
       />
     </>

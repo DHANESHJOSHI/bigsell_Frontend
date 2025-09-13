@@ -13,6 +13,7 @@ interface ModalProps {
   productImage: string;
   productTitle: string;
   productPrice: string;
+  productOriginalPrice?: string;
   productData?: any;
 }
 
@@ -22,6 +23,7 @@ const ProductDetails: React.FC<ModalProps> = ({
   productImage,
   productTitle,
   productPrice,
+  productOriginalPrice,
   productData,
 }) => {
   const [quantity, setQuantity] = useState(1);
@@ -32,17 +34,14 @@ const ProductDetails: React.FC<ModalProps> = ({
   const decreaseQuantity = () =>
     setQuantity((prev) => (prev > 1 ? prev - 1 : 1));
 
-  const priceNumber = parseFloat(productPrice) || 0;
-  const totalPrice = (priceNumber * quantity).toFixed(2);
-
   const addcart = () => toast.success("Successfully Added To Cart!");
-
   const handleAdd = () => {
     const item = {
       id: Date.now(),
       image: productImage,
       title: productTitle,
-      price: priceNumber,
+      price: productPrice,
+      originalPrice: productOriginalPrice,
       quantity: quantity,
       active: true,
     };
@@ -126,7 +125,8 @@ const ProductDetails: React.FC<ModalProps> = ({
                   </h2>
 
                   <span className="product-price">
-                    <span className="old-price">₹ 100000</span> ₹{totalPrice}
+                    <span className="old-price">₹ {productOriginalPrice}</span>{" "}
+                    {productPrice}
                   </span>
 
                   <p>

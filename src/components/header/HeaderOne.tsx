@@ -10,21 +10,29 @@ import { useCompare } from "@/components/header/CompareContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useGetGeneralSettingsQuery } from "@/store/generalSettings";
+import { useSearchProductsQuery } from "@/store/productApi";
+import { skipToken } from "@reduxjs/toolkit/query/react";
+import type { IProducts } from "@/store/productApi";
 
 /**
- * HeaderOne - defensive & fixed:
- * - provide safe default generalSettings
- * - image fallback using onError
- * - valid SVG path for search icon (no "..." placeholder)
- * - autocomplete container positioned (form wrapper is relative)
+ * HeaderOne - defensive & fixed, now with dynamic autocomplete
  */
 
 const DEFAULT_SETTINGS = {
   siteTitle: "BigSell",
-  logo: "/assets/placeholder-logo.png",
+  logo: "",
   headerTab: "Welcome to BigSell",
   number: "0000000000",
 };
+
+function useDebounce<T>(value: T, delay = 300) {
+  const [debounced, setDebounced] = useState<T>(value);
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return debounced;
+}
 
 function HeaderOne() {
   const {
@@ -110,66 +118,64 @@ function HeaderOne() {
   };
 
   const router = useRouter();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [showSuggestions, setShowSuggestions] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  const allSuggestions = [
-    "Profitable business makes your profit Best Solution",
-    "Details Profitable business makes your profit",
-    "One Profitable business makes your profit",
-    "Me Profitable business makes your profit",
-    "Details business makes your profit",
-    "Firebase business makes your profit",
-    "Netlyfy business makes your profit",
-    "Profitable business makes your profit",
-    "Valuable business makes your profit",
-    "System business makes your profit",
-    "Profitables business makes your profit",
-    "Content business makes your profit",
-    "Dalivaring business makes your profit",
-    "Staning business makes your profit",
-    "Best business makes your profit",
-    "cooler business makes your profit",
-    "Best-one Profitable business makes your profit",
-    "Super Fresh Meat",
-    "Original Fresh frut",
-    "Organic Fresh frut",
-    "Lite Fresh frut",
-  ];
+  // ---------- Search + Autocomplete (API-driven) ----------
+  const [searchTerm, setSearchTerm] = useState("");
+  const debouncedTerm = useDebounce(searchTerm, 300);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLUListElement | null>(null);
+
+  // keep typing intact to avoid implicit any — default to IProducts[]
+  const { data: apiResults = [] as IProducts[], isFetching } =
+    useSearchProductsQuery(
+      debouncedTerm && debouncedTerm.trim().length > 0
+        ? debouncedTerm
+        : skipToken
+    );
+
+  // Build suggestions from API results (use name; you can include slug/_id later)
+  const suggestions = (apiResults || []).map((p) => p.name ?? "").slice(0, 6);
+
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
   useEffect(() => {
-    if (searchTerm.trim().length > 0) {
-      const filtered = allSuggestions.filter((item) =>
-        item.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setSuggestions(filtered.slice(0, 5));
+    if (
+      debouncedTerm &&
+      debouncedTerm.trim().length > 0 &&
+      suggestions.length
+    ) {
       setShowSuggestions(true);
     } else {
-      setSuggestions([]);
       setShowSuggestions(false);
+      setActiveIndex(-1);
     }
-  }, [searchTerm]);
+  }, [debouncedTerm, suggestions.length]);
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setSearchTerm(suggestion);
-    setShowSuggestions(false);
-    router.push(`/shop?search=${encodeURIComponent(suggestion)}`);
-  };
-
+  // click outside to close suggestions
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
       if (
         inputRef.current &&
-        !inputRef.current.contains(event.target as Node)
+        !inputRef.current.contains(target) &&
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(target)
       ) {
         setShowSuggestions(false);
+        setActiveIndex(-1);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchTerm(suggestion);
+    setShowSuggestions(false);
+    setActiveIndex(-1);
+    router.push(`/shop?search=${encodeURIComponent(suggestion)}`);
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -181,8 +187,26 @@ function HeaderOne() {
     }
   };
 
-  // If general settings are still loading, we can render a lightweight skeleton
-  // This prevents components that expect settings from rendering undefined content.
+  const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setActiveIndex((i) => Math.max(i - 1, 0));
+    } else if (e.key === "Enter") {
+      if (activeIndex >= 0 && suggestions[activeIndex]) {
+        e.preventDefault();
+        handleSuggestionClick(suggestions[activeIndex]);
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+      setActiveIndex(-1);
+    }
+  };
+
+  // If general settings are still loading, render lightweight skeleton
   if (isLoading) {
     return (
       <div className="rts-header-one-area-one">
@@ -191,10 +215,7 @@ function HeaderOne() {
     );
   }
 
-  // If there was a fatal error fetching settings, still render header with defaults
-  // (we already merged defaults into `gs` above)
   if (isError) {
-    // optionally show a non-blocking warning; keep rendering so header exists
     console.warn("HeaderOne: failed to load generalSettings, using defaults.");
   }
 
@@ -209,7 +230,7 @@ function HeaderOne() {
                 <div className="bwtween-area-header-top">
                   <div className="discount-area">
                     <p className="disc">{gs.headerTab}</p>
-                    {/* countdown optional */}
+                    {/* optional countdown */}
                     {/* <div className="countdown">
                       <div className="countDown">10/05/2025 10:20:00</div>
                     </div> */}
@@ -267,8 +288,12 @@ function HeaderOne() {
                         onFocus={() =>
                           searchTerm.length > 0 && setShowSuggestions(true)
                         }
+                        onKeyDown={onKeyDown}
                         aria-autocomplete="list"
                         aria-controls="autocomplete-list"
+                        aria-activedescendant={
+                          activeIndex >= 0 ? `option-${activeIndex}` : undefined
+                        }
                       />
                       <button
                         type="submit"
@@ -276,7 +301,6 @@ function HeaderOne() {
                       >
                         <div className="btn-text">Search</div>
                         <div className="arrow-icon" aria-hidden>
-                          {/* VALID magnifier SVG path (no "...") */}
                           <svg
                             width={17}
                             height={16}
@@ -297,9 +321,10 @@ function HeaderOne() {
                       </button>
 
                       {/* Autocomplete dropdown */}
-                      {showSuggestions && suggestions.length > 0 && (
+                      {showSuggestions && (
                         <ul
                           id="autocomplete-list"
+                          ref={suggestionsRef}
                           className="autocomplete-suggestions"
                           style={{
                             position: "absolute",
@@ -316,16 +341,38 @@ function HeaderOne() {
                           }}
                           role="listbox"
                         >
+                          {isFetching && (
+                            <li
+                              style={{
+                                padding: "8px 12px",
+                                fontStyle: "italic",
+                              }}
+                            >
+                              Loading...
+                            </li>
+                          )}
+                          {!isFetching && suggestions.length === 0 && (
+                            <li style={{ padding: "8px 12px", opacity: 0.8 }}>
+                              No suggestions
+                            </li>
+                          )}
+
                           {suggestions.map((suggestion, index) => (
                             <li
                               key={index}
+                              id={`option-${index}`}
+                              role="option"
+                              aria-selected={index === activeIndex}
                               onClick={() => handleSuggestionClick(suggestion)}
+                              onMouseDown={(e) => e.preventDefault()} // prevent input blur before click
                               style={{
                                 padding: "8px 12px",
                                 cursor: "pointer",
+                                background:
+                                  index === activeIndex
+                                    ? "rgba(0,0,0,0.04)"
+                                    : undefined,
                               }}
-                              onMouseDown={(e) => e.preventDefault()} // prevent input blur before click
-                              role="option"
                             >
                               {suggestion}
                             </li>

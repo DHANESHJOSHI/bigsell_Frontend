@@ -56,12 +56,26 @@ useGetWeeklyDiscountProductsQuery(limit?: number)
    - ✅ Already using API (confirmed working)
    - ✅ Uses updated weekly-best-selling endpoint
 
+3. **`src/components/product/TrandingProduct.tsx`** 
+   - ❌ Removed 8 hardcoded static products
+   - ✅ Now uses `useGetTrendingProductsQuery()`
+   - ✅ Added loading/error/empty states
+   - ✅ Dynamic product rendering with proper links
+   - ✅ Supports limit parameter (default 8 products)
+
 #### New Components Created:
 1. **`src/components/product/WeeklyDiscountProducts.tsx`**
    - ✅ Uses `useGetWeeklyDiscountProductsQuery()`
    - ✅ Complete product display with discounts
    - ✅ Loading/error/empty states
    - ✅ Ready to use in any page
+
+2. **`src/components/product/TrendingProductsDemo.tsx`**
+   - ✅ Uses `useGetTrendingProductsQuery()`
+   - ✅ Modern Bootstrap card design
+   - ✅ Configurable title, limit, and view-all options
+   - ✅ Comprehensive product information display
+   - ✅ Loading/error/empty states
 
 ## 🔧 How to Use the New APIs
 
@@ -87,6 +101,9 @@ const { data } = useGetWeeklyBestSellingProductsQuery(5);
 
 // Get all weekly discount products (no limit)
 const { data } = useGetWeeklyDiscountProductsQuery();
+
+// Get 12 trending products
+const { data } = useGetTrendingProductsQuery(12);
 ```
 
 ## 📋 API Endpoints Integrated
@@ -96,6 +113,7 @@ const { data } = useGetWeeklyDiscountProductsQuery();
 | `/v1/api/products/weekly-best-selling` | `useGetWeeklyBestSellingProductsQuery` | ✅ Integrated | Limit parameter, caching |
 | `/v1/api/products/discount` | `useGetDiscountProductsQuery` | ✅ Integrated | Limit parameter, caching |
 | `/v1/api/products/weekly-discount` | `useGetWeeklyDiscountProductsQuery` | ✅ Integrated | Limit parameter, caching |
+| `/v1/api/products/trending` | `useGetTrendingProductsQuery` | ✅ Integrated | Limit parameter, caching |
 
 ## 🎯 Next Steps (Optional)
 
