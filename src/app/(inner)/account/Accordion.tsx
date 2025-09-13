@@ -1,4 +1,4 @@
-// components/account/AccountTabs.jsx
+// components/account/AccountTabs.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -7,21 +7,22 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 
 const API =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "https://bigsell-backend.vercel.app/v1/api";
+  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/v1/api";
 
 const AccountTabs = () => {
   const router = useRouter();
   const [activeTab, setActiveTab] = useState("track");
 
-  const [user, setUser] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [addresses, setAddresses] = useState({ billing: null, shipping: null });
+  const [user, setUser] = useState<any>(null);
+  const [orders, setOrders] = useState<any[]>([]);
+  const [addresses, setAddresses] = useState<{ billing: any; shipping: any }>({
+    billing: null,
+    shipping: null,
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  // helper to attach token
-  const getAuthHeaders = (token) => ({
+  const getAuthHeaders = (token: string) => ({
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
@@ -29,10 +30,10 @@ const AccountTabs = () => {
   });
 
   useEffect(() => {
-    const token = typeof window !== "undefined" && localStorage.getItem("authToken");
+    const token =
+      typeof window !== "undefined" && localStorage.getItem("authToken");
 
     if (!token) {
-      // no token — redirect to login
       router.push("/login");
       return;
     }
@@ -44,45 +45,78 @@ const AccountTabs = () => {
       setError("");
 
       try {
-        // Fetch user profile (adjust endpoint to match your backend)
-        const [{ data: userData }, { data: ordersData }] = await Promise.all([
-          axios.get(`${API}/auth/me`, getAuthHeaders(token)),
-          axios.get(`${API}/orders`, getAuthHeaders(token)), // adjust if orders endpoint is different
-        ]);
+        console.log("[AccountTabs] API:", API);
+        console.log("[AccountTabs] token:", token?.slice(0, 20) + "...");
+
+        // --- USER PROFILE ---
+        let userData: any = null;
+        try {
+          const res = await axios.get(`${API}/auth/me`, getAuthHeaders(token));
+          userData = res.data;
+        } catch (uErr: any) {
+          console.error(
+            "[AccountTabs] /auth/me error:",
+            uErr?.response?.status,
+            uErr?.config?.url,
+            uErr?.response?.data
+          );
+          throw uErr; // rethrow so outer catch handles 401/403
+        }
+
+        // --- ORDERS ---
+        let ordersData: any = null;
+        try {
+          const resOrders = await axios.get(
+            `${API}/orders/my-orders`,
+            getAuthHeaders(token)
+          );
+          ordersData = resOrders.data;
+        } catch (oErr: any) {
+          console.error(
+            "[AccountTabs] /orders/my-orders error:",
+            oErr?.response?.status,
+            oErr?.config?.url,
+            oErr?.response?.data
+          );
+          if (oErr?.response?.status === 404) {
+            // fallback try `/orders`
+            try {
+              const resOrders2 = await axios.get(
+                `${API}/orders`,
+                getAuthHeaders(token)
+              );
+              ordersData = resOrders2.data;
+            } catch (fallbackErr: any) {
+              console.error(
+                "[AccountTabs] fallback /orders also failed:",
+                fallbackErr?.response?.status,
+                fallbackErr?.config?.url
+              );
+              setError("Orders endpoint not found. Check backend routes.");
+            }
+          } else {
+            throw oErr;
+          }
+        }
 
         if (cancelled) return;
 
-        setUser(userData?.user || userData); // adapt to your API response shape
+        setUser(userData?.user || userData);
         setOrders(
-          Array.isArray(ordersData?.orders) ? ordersData.orders : ordersData
+          Array.isArray(ordersData?.orders)
+            ? ordersData.orders
+            : ordersData || []
         );
 
-        // If address is part of user, set addresses; else update from separate endpoint
+        // addresses
         if (userData?.user?.billing || userData?.user?.shipping) {
           setAddresses({
             billing: userData.user.billing || null,
             shipping: userData.user.shipping || null,
           });
-        } else {
-          // optional: try fetch addresses endpoint if available
-          try {
-            const addrRes = await axios.get(
-              `${API}/users/addresses`,
-              getAuthHeaders(token)
-            );
-            if (!cancelled) {
-              setAddresses({
-                billing: addrRes.data.billing || null,
-                shipping: addrRes.data.shipping || null,
-              });
-            }
-          } catch (addrErr) {
-            // ignore if endpoint not present
-          }
         }
       } catch (err: any) {
-        console.error("Account fetch error:", err);
-        // If 401/403 -> token expired or invalid. Clear token and redirect to login.
+        console.error("Account fetch outer error:", err);
         const status = err?.response?.status;
         if (status === 401 || status === 403) {
           localStorage.removeItem("authToken");
@@ -106,11 +140,9 @@ const AccountTabs = () => {
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
-    // If you use server-side session or refresh token, call signout endpoint here
     router.push("/login");
   };
 
-  // If still loading, show minimal loader
   if (loading) {
     return (
       <div className="account-tab-area-start rts-section-gap">
@@ -125,11 +157,9 @@ const AccountTabs = () => {
     <div className="account-tab-area-start rts-section-gap">
       <div className="container-2">
         <div className="row">
+          {/* Sidebar */}
           <div className="col-lg-3">
-            <div
-              className="nav accout-dashborard-nav flex-column nav-pills me-3"
-              role="tablist"
-            >
+            <div className="nav accout-dashborard-nav flex-column nav-pills me-3">
               <button
                 className={`nav-link ${
                   activeTab === "dashboard" ? "active" : ""
@@ -167,13 +197,12 @@ const AccountTabs = () => {
                 <i className="fa-regular fa-user"></i> Account Details
               </button>
               <button className="nav-link" onClick={handleLogout}>
-                <span>
-                  <i className="fa-light fa-right-from-bracket" /> Log Out
-                </span>
+                <i className="fa-light fa-right-from-bracket" /> Log Out
               </button>
             </div>
           </div>
 
+          {/* Content */}
           <div className="col-lg-9 pl--50 pl_md--10 pl_sm--10 pt_md--30 pt_sm--30">
             <div className="tab-content">
               {error && (
@@ -218,7 +247,9 @@ const AccountTabs = () => {
                             <tr key={o._id || o.id}>
                               <td>{o.orderNumber || `#${o._id?.slice(-6)}`}</td>
                               <td>
-                                {new Date(o.createdAt).toLocaleDateString()}
+                                {o.createdAt
+                                  ? new Date(o.createdAt).toLocaleDateString()
+                                  : "-"}
                               </td>
                               <td>{o.status}</td>
                               <td>
@@ -247,127 +278,6 @@ const AccountTabs = () => {
                     </table>
                   </div>
                 </div>
-              )}
-
-              {activeTab === "track" && (
-                <div className="tracing-order-account">
-                  <h2 className="title">Orders tracking</h2>
-                  <p>
-                    To keep up with the status of your order, kindly input your
-                    OrderID in the designated box below and click the "Track"
-                    button.
-                  </p>
-                  <form
-                    className="order-tracking"
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const id = e.currentTarget.elements["orderId"]?.value;
-                      if (id) router.push(`/track/${id}`);
-                    }}
-                  >
-                    <div className="single-input">
-                      <label>Order Id</label>
-                      <input
-                        name="orderId"
-                        type="text"
-                        placeholder="Found in your order confirmation email"
-                        required
-                      />
-                    </div>
-                    <div className="single-input">
-                      <label>Billing email</label>
-                      <input
-                        name="billingEmail"
-                        type="email"
-                        placeholder="Email You use during checkout"
-                      />
-                    </div>
-                    <button className="rts-btn btn-primary" type="submit">
-                      Track
-                    </button>
-                  </form>
-                </div>
-              )}
-
-              {activeTab === "address" && (
-                <div className="shipping-address-billing-address-account">
-                  <div className="half">
-                    <h2 className="title">Billing Address</h2>
-                    <p className="address">
-                      {addresses.billing ? (
-                        <>
-                          {addresses.billing.line1} <br />
-                          {addresses.billing.city}, {addresses.billing.state}{" "}
-                          <br />
-                          {addresses.billing.postalCode} <br />
-                          {addresses.billing.country}
-                        </>
-                      ) : (
-                        <>No billing address found.</>
-                      )}
-                    </p>
-                    <a href="/account/edit-address">Edit</a>
-                  </div>
-                  <div className="half">
-                    <h2 className="title">Shipping Address</h2>
-                    <p className="address">
-                      {addresses.shipping ? (
-                        <>
-                          {addresses.shipping.line1} <br />
-                          {addresses.shipping.city}, {addresses.shipping.state}{" "}
-                          <br />
-                          {addresses.shipping.postalCode} <br />
-                          {addresses.shipping.country}
-                        </>
-                      ) : (
-                        <>No shipping address found.</>
-                      )}
-                    </p>
-                    <a href="/account/edit-address">Edit</a>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "account" && (
-                <form
-                  className="account-details-area"
-                  onSubmit={(e) => e.preventDefault()}
-                >
-                  <h2 className="title">Account Details</h2>
-                  <div className="input-half-area">
-                    <div className="single-input">
-                      <input
-                        type="text"
-                        placeholder="First Name"
-                        defaultValue={user?.firstName || ""}
-                      />
-                    </div>
-                    <div className="single-input">
-                      <input
-                        type="text"
-                        placeholder="Last Name"
-                        defaultValue={user?.lastName || ""}
-                      />
-                    </div>
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Display Name"
-                    defaultValue={user?.displayName || user?.name || ""}
-                    required
-                  />
-                  <input
-                    type="email"
-                    placeholder="Email Address *"
-                    defaultValue={user?.email || ""}
-                    required
-                    readOnly
-                  />
-                  <input type="password" placeholder="Current Password *" />
-                  <input type="password" placeholder="New Password *" />
-                  <input type="password" placeholder="Confirm Password *" />
-                  <button className="rts-btn btn-primary">Save Change</button>
-                </form>
               )}
             </div>
           </div>

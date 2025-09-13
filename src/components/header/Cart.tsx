@@ -5,23 +5,47 @@ import Link from "next/link";
 import Image from "next/image";
 import { useCart } from "./CartContext";
 
+type AnyObj = { [k: string]: any };
+
+const sanitizeNumber = (v: any) => {
+  // If already a number and finite, return it
+  if (typeof v === "number" && isFinite(v)) return v;
+
+  if (v == null) return 0; // null/undefined -> 0
+
+  // If value is an object with amount, try that
+  if (typeof v === "object") {
+    if (typeof v.amount !== "undefined") v = v.amount;
+    else return 0;
+  }
+
+  // Convert to string, remove currency symbols, commas, spaces, non-digit except dot/minus
+  const s = String(v)
+    .trim()
+    .replace(/[,₹\s]/g, "")
+    .replace(/[^\d.-]/g, "");
+  const n = Number(s);
+
+  return isFinite(n) ? n : 0;
+};
+
 const CartDropdown: React.FC = () => {
   const { cartItems, removeFromCart, isCartLoaded } = useCart();
 
-  // Ensure cartItems is always an array
   const safeCartItems = Array.isArray(cartItems) ? cartItems : [];
-  const activeItems = safeCartItems.filter((item) => item.active);
-  const total = activeItems.reduce(
-    (sum, item) => {
-      const price = typeof item.price === 'string' ? parseFloat(item.price) : item.price;
-      return sum + (isNaN(price) ? 0 : price * item.quantity);
-    },
-    0
+  // If items may not have `active`, treat undefined as true (adjust to your business rule)
+  const activeItems = safeCartItems.filter((item: AnyObj) =>
+    typeof item.active === "undefined" ? true : !!item.active
   );
-  const freeShippingThreshold = 125;
-  const remaining = freeShippingThreshold - total;
 
-  // Show loading state during hydration
+  const total = activeItems.reduce((sum: number, item: AnyObj) => {
+    const price = sanitizeNumber(item.price);
+    const qty = Math.max(0, Math.floor(sanitizeNumber(item.quantity) || 0));
+    return sum + price * qty;
+  }, 0);
+  const freeShippingThreshold = 125;
+  const remaining = Math.max(0, freeShippingThreshold - total);
+
   if (!isCartLoaded) {
     return (
       <div className="btn-border-only cart category-hover-header">
@@ -43,35 +67,45 @@ const CartDropdown: React.FC = () => {
           Shopping Cart ({activeItems.length.toString().padStart(2, "0")})
         </h5>
 
-        {activeItems.map((item) => (
-          <div key={item.id} className="cart-item-1 border-top">
-            <div className="img-name">
-              <div
-                className="close section-activation"
-                onClick={() => removeFromCart(item.id)}
-              >
-                <i className="fa-regular fa-x" />
-              </div>
-              <div className="thumbanil">
-                <Image
-                  src={item.image}
-                  alt={item.title}
-                  width={60}
-                  height={60}
-                />
-              </div>
-              <div className="details">
-                <Link href="/shop/details-profitable-business-makes-your-profit">
-                  <h5 className="title">{item.title}</h5>
-                </Link>
-                <div className="number">
-                  {item.quantity} <i className="fa-regular fa-x" />
-                  <span>₹ {((typeof item.price === 'string' ? parseFloat(item.price) : item.price) * item.quantity).toFixed(2)}</span>
+        {activeItems.map((item: AnyObj) => {
+          const price = sanitizeNumber(item.price);
+          const qty = Math.max(
+            0,
+            Math.floor(sanitizeNumber(item.quantity) || 0)
+          );
+          const lineTotal = price * qty;
+          console.log(lineTotal, price);
+
+          return (
+            <div key={item.id} className="cart-item-1 border-top">
+              <div className="img-name">
+                <div
+                  className="close section-activation"
+                  onClick={() => removeFromCart(item.id)}
+                >
+                  <i className="fa-regular fa-x" />
+                </div>
+                <div className="thumbanil">
+                  <Image
+                    src={item.image || "/placeholder.png"}
+                    alt={item.title || "Product"}
+                    width={60}
+                    height={60}
+                  />
+                </div>
+                <div className="details">
+                  <Link href="/shop/details-profitable-business-makes-your-profit">
+                    <h5 className="title">{item.title}</h5>
+                  </Link>
+                  <div className="number">
+                    {qty} <i className="fa-regular fa-x" />
+                    <span> ₹ {lineTotal.toFixed(2)} </span>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
 
         <div className="sub-total-cart-balance">
           <div className="bottom-content-deals mt--10">
