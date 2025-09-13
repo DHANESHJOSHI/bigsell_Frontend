@@ -81,7 +81,7 @@ const WishList: React.FC = () => {
             </div>
             {total < freeShippingThreshold && (
               <p>
-                Spend More <span>${remaining.toFixed(2)}</span> to reach{" "}
+                Spend More <span>₹{remaining.toFixed(2)}</span> to reach{" "}
                 <span>Free Shipping</span>
               </p>
             )}

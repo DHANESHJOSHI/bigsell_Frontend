@@ -87,8 +87,8 @@ const CartDropdown: React.FC = () => {
                 </div>
                 <div className="thumbanil">
                   <Image
-                    src={item.image || "/placeholder.png"}
-                    alt={item.title || "Product"}
+                    src={item.image || ""}
+                    alt={item.title || ""}
                     width={60}
                     height={60}
                   />
