@@ -1,9 +1,8 @@
 "use client";
 import HeaderOne from "@/components/header/HeaderOne";
-import { useState, Suspense, useMemo } from "react";
+import { useState, Suspense, useMemo, useEffect } from "react";
 import ShopMain from "./ShopMain";
 import ShopMainList from "./ShopMainList";
-// import Product from "@/data/Product.json";
 import FooterOne from "@/components/footer/FooterOne";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -13,8 +12,7 @@ import {
   useGetTrendingProductsQuery,
   useGetNewArrivalsQuery,
   useSearchProductsQuery,
-  useGetProductsByCategoryQuery,
-  IProducts,
+  useGetProductFiltersQuery,
 } from "@/store/productApi";
 
 interface PostType {
@@ -23,8 +21,6 @@ interface PostType {
   slug: string;
   image: string;
   title?: string;
-  author?: string;
-  publishedDate?: string;
   price?: string;
   originalPrice?: string;
   discount?: number;
@@ -33,12 +29,11 @@ interface PostType {
   size?: any;
 }
 
-// Transform API product to PostType for compatibility
 const transformProductToPost = (product: any): PostType => {
   const name =
     typeof product.name === "object"
       ? product.name.title || product.name._id || "Unknown Product"
-      : product.name || "Unknown Product";
+      : product.name || product.title || "Unknown Product";
 
   const category =
     typeof product.category === "object"
@@ -57,16 +52,21 @@ const transformProductToPost = (product: any): PostType => {
 
   const discount =
     typeof product.discount === "object"
-      ? product.discount || product.discount || 0
+      ? product.discount || 0
       : product.discount || 0;
 
   const thumbnail =
-    product.thumbnail || (product.images && product.images[0]) || "default.jpg";
+    product.thumbnail ||
+    (product.images && product.images[0]) ||
+    product.image ||
+    "default.jpg";
 
   return {
-    id: product._id || "",
+    id: product._id || product.sku || "",
     category: category,
-    slug: product.slug || name.toLowerCase().replace(/\s+/g, "-"),
+    slug:
+      product.slug ||
+      (name + "-" + (product._id || "")).toLowerCase().replace(/\s+/g, "-"),
     image: thumbnail,
     title: name,
     price: price.toString(),
@@ -91,103 +91,132 @@ function ShopContent() {
   const [showTrending, setShowTrending] = useState<boolean>(false);
   const [showNewArrivals, setShowNewArrivals] = useState<boolean>(false);
 
+  // Product data queries
   const {
     data: allProducts = [],
     isLoading: productsLoading,
     error: productsError,
   } = useGetProductsQuery();
-  const { data: featuredProducts = [] } = useGetFeaturedProductsQuery();
 
+  const { data: featuredProducts = [] } = useGetFeaturedProductsQuery();
   const { data: trendingProducts = [] } = useGetTrendingProductsQuery();
   const { data: newArrivals = [] } = useGetNewArrivalsQuery();
   const { data: searchResults = [] } = useSearchProductsQuery(searchQuery, {
     skip: !searchQuery,
   });
 
-  const shouldUseFallback = productsError || allProducts.length === 0;
+  // NEW: fetch filter options from API
+  const {
+    data: filtersResponse,
+    isLoading: filtersLoading,
+    error: filtersError,
+  } = useGetProductFiltersQuery();
+
+  // Extracted lists from API (safely)
+  const apiBrands: string[] = filtersResponse?.data?.brands ?? [];
+  const apiColors: string[] = filtersResponse?.data?.colors ?? [];
+  const apiSizes: string[] = filtersResponse?.data?.sizes ?? [];
+  const apiPriceMin: number | undefined =
+    filtersResponse?.data?.priceRange?.minPrice;
+  const apiPriceMax: number | undefined =
+    filtersResponse?.data?.priceRange?.maxPrice;
+
+  // If API gives a price range, initialize min/max only if user hasn't changed them yet.
+  useEffect(() => {
+    if (apiPriceMin !== undefined && apiPriceMax !== undefined) {
+      // only set defaults if user hasn't already adjusted (basic heuristic)
+      const isDefaultRange = minPrice === 0 && maxPrice === 100000;
+      if (isDefaultRange) {
+        setMinPrice(Math.floor(apiPriceMin));
+        setMaxPrice(Math.ceil(apiPriceMax));
+      }
+    }
+  }, [apiPriceMin, apiPriceMax, minPrice, maxPrice]);
+
+  const shouldUseFallback =
+    !!productsError || (Array.isArray(allProducts) && allProducts.length === 0);
   const fallbackProducts = shouldUseFallback
-    ? allProducts.map((p: any, index: number) => ({
-      name: p.title || "Unknown Product",
-      price: parseFloat(p.price?.replace("₹", "").replace(",", "") || "0"),
-      category: p.category || "Unknown",
-      brand: "Local Brand",
-      sku: p.slug || `product-${index}`,
-      thumbnail: p.image || "default.jpg",
-      images: [p.image || "default.jpg"],
-      description: "Local product description",
-      shortDescription: "Local product",
-      originalPrice:
-        parseFloat(p.price?.replace("₹", "").replace(",", "") || "0") * 1.2,
-      discount: p.discount,
-      discountType: p.discountType || p.discountType ? "percentage" : "fixed",
-      stock: 100,
-      minStock: 10,
-      weight: 1,
-      dimensions: { length: 10, width: 10, height: 10 },
-      colors: [],
-      sizes: [],
-      tags: [],
-      features: [],
-      specifications: [],
-      status: "active" as const,
-      isFeatured: Math.random() > 0.5,
-      isTrending: Math.random() > 0.5,
-      isNewArrival: Math.random() > 0.5,
-      seoTitle: p.title || "Product",
-      seoDescription: "Product description",
-      seoKeywords: [],
-      vendor: "Local Store",
-      shippingInfo: {
+    ? (allProducts || []).map((p: any, index: number) => ({
+        name: p.title || "Unknown Product",
+        price: parseFloat(String(p.price || 0)) || 0,
+        category: p.category || "Unknown",
+        brand: "Local Brand",
+        sku: p.slug || `product-${index}`,
+        thumbnail: p.image || "default.jpg",
+        images: [p.image || "default.jpg"],
+        description: "Local product description",
+        shortDescription: "Local product",
+        originalPrice: (parseFloat(String(p.price || 0)) || 0) * 1.2,
+        discount: p.discount,
+        discountType: p.discountType ? "percentage" : "fixed",
+        stock: 100,
+        minStock: 10,
         weight: 1,
-        freeShipping: true,
-        shippingCost: 0,
-        estimatedDelivery: "2-3 days",
-      },
-    }))
+        dimensions: { length: 10, width: 10, height: 10 },
+        colors: [],
+        sizes: [],
+        tags: [],
+        features: [],
+        specifications: [],
+        status: "active" as const,
+        isFeatured: Math.random() > 0.5,
+        isTrending: Math.random() > 0.5,
+        isNewArrival: Math.random() > 0.5,
+        seoTitle: p.title || "Product",
+        seoDescription: "Product description",
+        seoKeywords: [],
+        vendor: "Local Store",
+        shippingInfo: {
+          weight: 1,
+          freeShipping: true,
+          shippingCost: 0,
+          estimatedDelivery: "2-3 days",
+        },
+      }))
     : [];
 
   const effectiveProducts = shouldUseFallback ? fallbackProducts : allProducts;
 
+  // Categories derived from actual products (keeps existing behavior)
   const allCategories = useMemo(() => {
     const categories = new Set<string>();
-    allProducts.forEach((p: any) => {
+    (allProducts || []).forEach((p: any) => {
       if (p && p.category) {
         const category =
           typeof p.category === "object"
             ? (p.category as any).title ||
-            (p.category as any)._id ||
-            (p.category as any).name
+              (p.category as any)._id ||
+              (p.category as any).name
             : p.category;
-        if (category && typeof category === "string") {
-          categories.add(category);
-        }
+        if (category && typeof category === "string") categories.add(category);
       }
     });
     return Array.from(categories);
   }, [allProducts]);
 
-  const allBrands = useMemo(() => {
+  // Brands: prefer API list if available, else derive from products
+  const derivedBrands = useMemo(() => {
     const brands = new Set<string>();
-    allProducts.forEach((p: any) => {
+    (allProducts || []).forEach((p: any) => {
       if (p && p.brand) {
         const brand =
           typeof p.brand === "object"
             ? (p.brand as any).title ||
-            (p.brand as any)._id ||
-            (p.brand as any).name
+              (p.brand as any)._id ||
+              (p.brand as any).name
             : p.brand;
-        if (brand && typeof brand === "string") {
-          brands.add(brand);
-        }
+        if (brand && typeof brand === "string") brands.add(brand);
       }
     });
     return Array.from(brands);
   }, [allProducts]);
 
+  const allBrands = apiBrands.length > 0 ? apiBrands : derivedBrands;
+
   const currentProducts = useMemo(() => {
     let products = allProducts;
 
-    if (searchQuery && searchResults.length > 0) {
+    if (searchQuery && (searchResults?.length ?? 0) > 0) {
       products = searchResults;
     } else if (showFeatured) {
       products = featuredProducts;
@@ -197,7 +226,7 @@ function ShopContent() {
       products = newArrivals;
     }
 
-    return products.map(transformProductToPost);
+    return (products || []).map(transformProductToPost);
   }, [
     allProducts,
     searchResults,
@@ -244,9 +273,10 @@ function ShopContent() {
     }
 
     if (selectedBrands.length > 0) {
+      // Build a map of slug -> brand from effectiveProducts
       const brandsMap = new Map<string, string>();
-      allProducts.forEach((p: any) => {
-        const postSlug =
+      (effectiveProducts || []).forEach((p: any) => {
+        const slug =
           p.sku ||
           p._id ||
           (p.name && typeof p.name === "string"
@@ -255,10 +285,10 @@ function ShopContent() {
         const brand =
           typeof p.brand === "object"
             ? (p.brand as any).title ||
-            (p.brand as any)._id ||
-            (p.brand as any).name
+              (p.brand as any)._id ||
+              (p.brand as any).name
             : p.brand;
-        brandsMap.set(postSlug, brand);
+        brandsMap.set(slug, brand);
       });
 
       products = products.filter((product) => {
@@ -288,26 +318,29 @@ function ShopContent() {
     minPrice,
     maxPrice,
     searchQuery,
-    allProducts,
+    effectiveProducts,
   ]);
 
   const handlePriceFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // We already set min/max locally; if you want to call an API to apply server-side filters,
+    // trigger that query here (e.g. refetch product list with query params).
   };
 
-  if (productsLoading) {
+  // Loading / error states
+  if (productsLoading || filtersLoading) {
     return (
       <div className="text-center py-20">
         <div className="spinner-border text-primary" role="status">
           <span className="visually-hidden">Loading...</span>
         </div>
-        <p className="mt-3">Loading products...</p>
+        <p className="mt-3">Loading products and filters...</p>
       </div>
     );
   }
 
   if (productsError) {
-    console.log(productsError);
+    console.error(productsError);
     return (
       <div className="text-center py-20">
         <div className="alert alert-danger">
@@ -383,8 +416,12 @@ function ShopContent() {
                       <input
                         type="range"
                         className="range"
-                        min={0}
-                        max={150}
+                        min={apiPriceMin ? Math.floor(apiPriceMin) : 0}
+                        max={
+                          apiPriceMax
+                            ? Math.ceil(apiPriceMax)
+                            : Math.max(150, maxPrice)
+                        }
                         value={maxPrice}
                         onChange={(e) =>
                           setMaxPrice(parseInt(e.target.value, 10))
@@ -392,7 +429,7 @@ function ShopContent() {
                       />
                       <div className="filter-value-min-max">
                         <span>
-                          Price: ${minPrice} — ${maxPrice}
+                          Price: ₹{minPrice} — ₹{maxPrice}
                         </span>
                         <button type="submit" className="rts-btn btn-primary">
                           Filter
@@ -518,8 +555,9 @@ function ShopContent() {
                         <li className="nav-item" role="presentation">
                           <button
                             onClick={() => setActiveTab("tab1")}
-                            className={`nav-link single-button ${activeTab === "tab1" ? "active" : ""
-                              }`}
+                            className={`nav-link single-button ${
+                              activeTab === "tab1" ? "active" : ""
+                            }`}
                           >
                             <svg
                               width={16}

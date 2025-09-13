@@ -46,7 +46,7 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
   const handleWishlist = () => {
     addToWishlist({
       id: Date.now(),
-      image: `/assets/images/discount-product/${ProductImage}`,
+      image: `${ProductImage}`,
       title: ProductTitle ?? "Default Product Title",
       price: parseFloat(Price ?? "0"),
       quantity: 1,
