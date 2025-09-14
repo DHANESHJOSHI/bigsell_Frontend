@@ -27,6 +27,7 @@ interface PostType {
   discountType?: "percentage" | "fixed";
   color?: any;
   size?: any;
+  productData?: any; // Store original product data
 }
 
 const transformProductToPost = (product: any): PostType => {
@@ -75,6 +76,7 @@ const transformProductToPost = (product: any): PostType => {
     discountType: product.discountType || "percentage",
     color: product.colors || [],
     size: product.sizes || [],
+    productData: product, // Store original product data
   };
 };
 
@@ -631,6 +633,7 @@ function ShopContent() {
                                     DiscountType={post.discountType}
                                     Color={post.color}
                                     Size={post.size}
+                                    productData={post.productData}
                                   />
                                 </div>
                               </div>

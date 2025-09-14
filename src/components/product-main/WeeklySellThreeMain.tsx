@@ -17,6 +17,7 @@ interface BlogGridMainProps {
     ProductImage: string;
     ProductTitle?: string;
     Price?: string;
+    productData?: any;
 }
 
 const BlogGridMain: React.FC<BlogGridMainProps> = ({
@@ -24,6 +25,7 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
     ProductImage,
     ProductTitle,
     Price,
+    productData,
 }) => {
 
 
@@ -83,11 +85,14 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
     const { addToCart } = useCart(); // Now works
 
     const handleAdd = () => {
+        // Use productData.price if available, otherwise fallback to Price prop
+        const finalPrice = productData?.price ?? parseFloat(Price ?? "0");
+        
         addToCart({
             id: Date.now(), // unique ID
-            image: `/assets/images/grocery/${ProductImage}`,
-            title: ProductTitle ?? 'Default Product Title',
-            price: parseFloat(Price ?? '0'),
+            image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/grocery/${ProductImage}`,
+            title: productData?.name || (ProductTitle ?? 'Default Product Title'),
+            price: finalPrice,
             quantity: 1,
             active: true,
         });
@@ -97,11 +102,14 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
 
     const { addToWishlist } = useWishlist();
     const handleWishlist = () => {
+        // Use productData.price if available, otherwise fallback to Price prop
+        const finalPrice = productData?.price ?? parseFloat(Price ?? "0");
+        
         addToWishlist({
             id: Date.now(),
-            image: `/assets/images/grocery/${ProductImage}`,
-            title: ProductTitle ?? 'Default Product Title',
-            price: parseFloat(Price ?? '0'),
+            image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/grocery/${ProductImage}`,
+            title: productData?.name || (ProductTitle ?? 'Default Product Title'),
+            price: finalPrice,
             quantity: 1,
         });
     };

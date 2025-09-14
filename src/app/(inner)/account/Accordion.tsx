@@ -9,9 +9,27 @@ import { useRouter } from "next/navigation";
 const API =
   process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/v1/api";
 
+// helper: decode JWT
+const decodeToken = (token: string) => {
+  try {
+    const base64Url = token.split(".")[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join("")
+    );
+    return JSON.parse(jsonPayload);
+  } catch (err) {
+    console.error("Failed to decode token:", err);
+    return null;
+  }
+};
+
 const AccountTabs = () => {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState("track");
+  const [activeTab, setActiveTab] = useState("dashboard");
 
   const [user, setUser] = useState<any>(null);
   const [orders, setOrders] = useState<any[]>([]);
@@ -40,28 +58,25 @@ const AccountTabs = () => {
 
     let cancelled = false;
 
+    const decoded = decodeToken(token);
+    if (decoded) {
+      console.log("[AccountTabs] Decoded token user:", decoded);
+      setUser((prev: any) => prev || decoded);
+    }
+
     const fetchAll = async () => {
       setLoading(true);
       setError("");
 
       try {
-        console.log("[AccountTabs] API:", API);
-        console.log("[AccountTabs] token:", token?.slice(0, 20) + "...");
-
-        // --- USER PROFILE ---
+        // --- USER PROFILE (fresh data) ---
         let userData: any = null;
         try {
           const res = await axios.get(`${API}/auth/me`, getAuthHeaders(token));
+
           userData = res.data;
-        } catch (uErr: any) {
-          console.error(
-            "[AccountTabs] /auth/me error:",
-            uErr?.response?.status,
-            uErr?.config?.url,
-            uErr?.response?.data
-          );
-          throw uErr; // rethrow so outer catch handles 401/403
-        }
+          setUser(userData?.user || userData);
+        } catch (uErr: any) {}
 
         // --- ORDERS ---
         let ordersData: any = null;
@@ -71,44 +86,19 @@ const AccountTabs = () => {
             getAuthHeaders(token)
           );
           ordersData = resOrders.data;
+          console.log("Fetched orders:", ordersData);
         } catch (oErr: any) {
-          console.error(
-            "[AccountTabs] /orders/my-orders error:",
-            oErr?.response?.status,
-            oErr?.config?.url,
-            oErr?.response?.data
-          );
-          if (oErr?.response?.status === 404) {
-            // fallback try `/orders`
-            try {
-              const resOrders2 = await axios.get(
-                `${API}/orders`,
-                getAuthHeaders(token)
-              );
-              ordersData = resOrders2.data;
-            } catch (fallbackErr: any) {
-              console.error(
-                "[AccountTabs] fallback /orders also failed:",
-                fallbackErr?.response?.status,
-                fallbackErr?.config?.url
-              );
-              setError("Orders endpoint not found. Check backend routes.");
-            }
-          } else {
-            throw oErr;
-          }
+          setError("Failed to fetch orders.");
         }
 
         if (cancelled) return;
 
-        setUser(userData?.user || userData);
         setOrders(
           Array.isArray(ordersData?.orders)
             ? ordersData.orders
             : ordersData || []
         );
 
-        // addresses
         if (userData?.user?.billing || userData?.user?.shipping) {
           setAddresses({
             billing: userData.user.billing || null,
@@ -116,7 +106,6 @@ const AccountTabs = () => {
           });
         }
       } catch (err: any) {
-        console.error("Account fetch outer error:", err);
         const status = err?.response?.status;
         if (status === 401 || status === 403) {
           localStorage.removeItem("authToken");
@@ -214,7 +203,7 @@ const AccountTabs = () => {
               {activeTab === "dashboard" && (
                 <div className="dashboard-account-area">
                   <h2 className="title">
-                    Hello {user?.firstName || user?.name || "Customer"}!{" "}
+                    Hello {user?.firstName || user?.name || user?.email}!{" "}
                     <a href="#" onClick={handleLogout}>
                       Log Out.
                     </a>

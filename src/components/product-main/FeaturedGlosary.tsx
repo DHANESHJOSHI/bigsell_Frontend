@@ -44,18 +44,22 @@ const FeaturedGlosary: React.FC<BlogGridMainProps> = ({
 
   // Debug log to show all product data is available
   useEffect(() => {
-    if (productData) {
-      console.log("Product Data in FeaturedGlosary:", productData);
-    }
+    // if (productData) {
+    //   // console.log("Product Data in FeaturedGlosary:", productData);
+    // }
   }, [productData]);
 
   const handleAdd = () => {
+    // Use productData.price if available, otherwise fallback to Price prop
+    const finalPrice = productData?.price ?? parseFloat(Price ?? "0");
+
     addToCart({
       id: Date.now(),
       productId: productData?._id,
-      image: `${ProductImage}`,
-      title: ProductTitle ?? "Default Product Title",
-      price: parseFloat(Price ?? "0"),
+      image:
+        productData?.thumbnail || productData?.images?.[0] || `${ProductImage}`,
+      title: productData?.name || (ProductTitle ?? "Default Product Title"),
+      price: finalPrice,
       quantity: 1,
       active: true,
     });
@@ -64,12 +68,16 @@ const FeaturedGlosary: React.FC<BlogGridMainProps> = ({
   };
 
   const handleWishlist = () => {
+    // Use productData.price if available, otherwise fallback to Price prop
+    const finalPrice = productData?.price ?? parseFloat(Price ?? "0");
+
     addToWishlist({
       id: Date.now(),
       productId: productData?._id,
-      image: `${ProductImage}`,
-      title: ProductTitle ?? "Default Product Title",
-      price: parseFloat(Price ?? "0"),
+      image:
+        productData?.thumbnail || productData?.images?.[0] || `${ProductImage}`,
+      title: productData?.name || (ProductTitle ?? "Default Product Title"),
+      price: finalPrice,
       quantity: 1,
       active: false,
     });

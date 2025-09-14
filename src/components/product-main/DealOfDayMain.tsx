@@ -41,12 +41,15 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
     const { addToCart } = useCart();
 
     const handleAdd = () => {
+        // Use productData.price if available, otherwise fallback to Price prop
+        const finalPrice = productData?.price ?? (Price ? parseFloat(Price) : 0);
+        
         addToCart({
             id: Date.now(),
             productId: productData?._id,
             image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/grocery/${ProductImage}`,
-            title: ProductTitle ?? 'How to growing your business',
-            price: Price ? parseFloat(Price) : 0,
+            title: productData?.name || (ProductTitle ?? 'How to growing your business'),
+            price: finalPrice,
             quantity: 1,
             active: true,
         });
@@ -54,12 +57,15 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
 
     const { addToWishlist } = useCart();
     const handleWishlist = () => {
+        // Use productData.price if available, otherwise fallback to Price prop
+        const finalPrice = productData?.price ?? parseFloat(Price ?? '0');
+        
         addToWishlist({
             id: Date.now(),
             productId: productData?._id,
             image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/grocery/${ProductImage}`,
-            title: ProductTitle ?? 'Default Product Title',
-            price: parseFloat(Price ?? '0'),
+            title: productData?.name || (ProductTitle ?? 'Default Product Title'),
+            price: finalPrice,
             quantity: 1,
             active: false,
         });

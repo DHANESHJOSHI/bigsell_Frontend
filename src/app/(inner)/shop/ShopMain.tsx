@@ -21,6 +21,7 @@ interface BlogGridMainProps {
   DiscountType?: "fixed" | "percentage";
   Color?: any;
   Size?: any;
+  productData?: any;
 }
 
 const BlogGridMain: React.FC<BlogGridMainProps> = ({
@@ -31,6 +32,7 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
   Price,
   OriginalPrice,
   Discount = 0,
+  productData,
 }) => {
   type ModalType = "one" | "two" | "three" | null;
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -81,13 +83,17 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
   const { addToCart } = useCart();
 
   const handleAdd = () => {
+    // Use productData.price if available, otherwise fallback to Price prop
+    const finalPrice = productData?.price ?? parseFloat(Price ?? "0");
+    
     addToCart({
-      id: Date.now(),
-      image: ProductImage.startsWith("http")
+      id: productData?._id ?? Date.now(),
+      productId: productData?._id,
+      image: productData?.thumbnail || productData?.images?.[0] || (ProductImage.startsWith("http")
         ? ProductImage
-        : `/assets/images/grocery/${ProductImage}`,
-      title: ProductTitle ?? "Default Product Title",
-      price: parseFloat(Price ?? "0"),
+        : `/assets/images/grocery/${ProductImage}`),
+      title: productData?.name || (ProductTitle ?? "Default Product Title"),
+      price: finalPrice,
       quantity: 1,
       active: true,
     });

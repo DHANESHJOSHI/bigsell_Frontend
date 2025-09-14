@@ -1,13 +1,19 @@
+// components/header/CartContext.tsx
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from "react";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 
-interface CartItemRaw {
+export interface CartItemRaw {
   id?: number | string;
-  productId?: string;
+  productId?: string | number;
   image?: string;
   title?: string;
-  // price could be number, formatted string, object etc. before normalization
   price?: any;
   quantity?: any;
   active?: any;
@@ -15,19 +21,20 @@ interface CartItemRaw {
 }
 
 export interface CartItem {
-  id: number | string;
+  id: string;
   productId?: string;
   image: string;
   title: string;
-  // canonical numeric price in currency units (e.g. rupees). Use integer paise/cents if you prefer.
   price: number;
   quantity: number;
-  active: boolean; // true = cart, false = wishlist
-  raw?: CartItemRaw; // keep original for reference if needed
+  active: boolean;
+  raw?: CartItemRaw;
 }
 
 interface CartContextProps {
-  cartItems: CartItem[];
+  cartItems: CartItem[]; // full storage
+  activeCartItems: CartItem[]; // only active (in-cart)
+  wishlistItems: CartItem[];
   addToCart: (item: CartItemRaw) => void;
   addToWishlist: (item: CartItemRaw) => void;
   removeFromCart: (idOrProductId: number | string) => void;
@@ -35,35 +42,41 @@ interface CartContextProps {
     idOrProductId: number | string,
     quantity: number
   ) => void;
+  clearCart: () => void;
+
+  // loading + totals + shipping
   isCartLoaded: boolean;
+  subtotal: number;
+  discount: number; // e.g. 0.1 = 10%
+  finalTotal: number;
+  FREE_SHIPPING_THRESHOLD: number;
+
+  // coupon API
+  coupon: string;
+  couponMessage: string;
+  applyCoupon: (code: string) => void;
+  setCoupon: (c: string) => void;
+  setCouponMessage: (m: string) => void;
 }
 
 const CartContext = createContext<CartContextProps | undefined>(undefined);
 
 export const useCart = () => {
-  const context = useContext(CartContext);
-  if (!context) throw new Error("useCart must be used within a CartProvider");
-  return context;
+  const ctx = useContext(CartContext);
+  if (!ctx) throw new Error("useCart must be used within a CartProvider");
+  return ctx;
 };
 
-/* -------------------------
-   Helpers: normalization + debugging
-   ------------------------- */
-
+/* ---------- helpers ---------- */
 const sanitizeNumber = (v: any): number => {
   if (typeof v === "number" && isFinite(v)) return v;
   if (v == null) return 0;
-
-  // If object with amount/value keys
   if (typeof v === "object") {
     if (typeof v.amount !== "undefined") return sanitizeNumber(v.amount);
     if (typeof v.value !== "undefined") return sanitizeNumber(v.value);
-    // if object looks like { price: ... }
     if (typeof v.price !== "undefined") return sanitizeNumber(v.price);
     return 0;
   }
-
-  // string: remove currency symbols, commas, spaces and keep digits/dot/minus
   const s = String(v)
     .trim()
     .replace(/[,₹\s]/g, "")
@@ -73,28 +86,28 @@ const sanitizeNumber = (v: any): number => {
 };
 
 const normalizeRawItem = (raw: CartItemRaw): CartItem => {
-  // attempt to derive an id: prefer productId if present, else raw.id
-  const productId = raw.productId ? String(raw.productId) : undefined;
-  const id = raw.id ?? productId ?? `${Math.random().toString(36).slice(2, 9)}`;
+  const productIdRaw =
+    typeof raw.productId !== "undefined" ? raw.productId : undefined;
+  const productId =
+    typeof productIdRaw !== "undefined" ? String(productIdRaw) : undefined;
 
-  // quantity fallback: sometimes stored as string, "", null -> default 1 for cart items
+  const idSource =
+    typeof raw.id !== "undefined"
+      ? raw.id
+      : productId ?? `${Math.random().toString(36).slice(2, 9)}`;
+  const id = String(idSource);
+
   let quantity = Math.floor(sanitizeNumber(raw.quantity));
   if (!quantity || quantity < 1) quantity = 1;
 
-  // price normalization: keeps numeric rupees (e.g., 125.5)
   const price = sanitizeNumber(raw.price);
 
-  // active: convert to boolean, default true (treat as cart)
   const active = typeof raw.active === "undefined" ? true : !!raw.active;
 
-  // title/image safe defaults
   const title = raw.title ?? "Untitled product";
   const image = raw.image ?? "/placeholder.png";
 
-  // debug log once when price is suspicious (null/zero)
   if (raw.price == null || price === 0) {
-    // keep console.warn so developers see problems in dev/qa,
-    // DON'T spam in production (you can gate it behind NODE_ENV)
     if (process.env.NODE_ENV !== "production") {
       console.warn("[CartProvider] Suspicious price for item:", {
         rawPrice: raw.price,
@@ -105,27 +118,22 @@ const normalizeRawItem = (raw: CartItemRaw): CartItem => {
     }
   }
 
-  return {
-    id,
-    productId,
-    image,
-    title,
-    price,
-    quantity,
-    active,
-    raw,
-  };
+  return { id, productId, image, title, price, quantity, active, raw };
 };
 
-/* -------------------------
-   CartProvider (normalized)
-   ------------------------- */
+/* ---------- Provider ---------- */
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [isCartLoaded, setIsCartLoaded] = useState(false);
 
-  // Utility: persist only canonical cart items (avoid storing raw)
+  // coupon state
+  const [coupon, setCoupon] = useState("");
+  const [couponMessage, setCouponMessage] = useState("");
+  const [discount, setDiscount] = useState(0); // fraction
+
+  const FREE_SHIPPING_THRESHOLD = 5000; // canonical value used across app
+
   const persist = (items: CartItem[]) => {
     try {
       localStorage.setItem("cart", JSON.stringify(items));
@@ -134,23 +142,24 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // Load + normalize on first mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem("cart");
       if (stored) {
         const parsed = JSON.parse(stored);
-        // If stored is array of raw-like items or maybe already normalized, handle both.
         if (Array.isArray(parsed)) {
           const normalized = parsed.map((it) =>
-            // if it already looks normalized (has numeric price), preserve but coerce types
             typeof it.price === "number" && typeof it.quantity === "number"
               ? {
-                  id:
+                  id: String(
                     it.id ??
-                    it.productId ??
-                    `${Math.random().toString(36).slice(2, 9)}`,
-                  productId: it.productId,
+                      it.productId ??
+                      `${Math.random().toString(36).slice(2, 9)}`
+                  ),
+                  productId:
+                    typeof it.productId !== "undefined"
+                      ? String(it.productId)
+                      : undefined,
                   image: it.image ?? "/placeholder.png",
                   title: it.title ?? "Untitled product",
                   price: sanitizeNumber(it.price),
@@ -164,10 +173,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
               : normalizeRawItem(it)
           );
           setCartItems(normalized);
-          // save back normalized form (migration)
           persist(normalized);
         } else {
-          // unknown shape: ignore it and clear
           console.warn(
             "[CartProvider] Unexpected cart shape in localStorage:",
             parsed
@@ -184,33 +191,48 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     } finally {
       setIsCartLoaded(true);
     }
-    // run only once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Persist when cart changes (only after initial load)
   useEffect(() => {
     if (!isCartLoaded) return;
     persist(cartItems);
   }, [cartItems, isCartLoaded]);
 
-  /* ----- Operations: all accept raw items and normalize ---- */
+  const activeCartItems = useMemo(
+    () => cartItems.filter((i) => i.active),
+    [cartItems]
+  );
+  const wishlistItems = useMemo(
+    () => cartItems.filter((i) => !i.active),
+    [cartItems]
+  );
 
-  const addToCart = (rawItem: CartItemRaw) => {
-    const item = normalizeRawItem(rawItem);
+  const subtotal = useMemo(
+    () => activeCartItems.reduce((acc, it) => acc + it.price * it.quantity, 0),
+    [activeCartItems]
+  );
+  const shipping = subtotal >= FREE_SHIPPING_THRESHOLD ? 0 : 50;
+  const finalTotal = useMemo(() => {
+    const applied = Math.max(0, discount);
+    const discounted = subtotal - subtotal * applied;
+    return Math.max(0, discounted + shipping);
+  }, [subtotal, discount, shipping]);
+
+  /* operations */
+  const addToCart = (raw: CartItemRaw) => {
+    const item = normalizeRawItem(raw);
     item.active = true;
-
+    const identifier = String(item.productId ?? item.id);
     setCartItems((prev) => {
-      const identifier = item.productId ?? item.id;
       const existingIndex = prev.findIndex(
-        (i) => (i.productId ?? i.id) === identifier && i.active === true
+        (i) => String(i.productId ?? i.id) === identifier && i.active === true
       );
-
       if (existingIndex > -1) {
         const copy = [...prev];
         copy[existingIndex] = {
           ...copy[existingIndex],
           quantity: Math.max(1, copy[existingIndex].quantity + item.quantity),
-          // prefer keeping existing price if non-zero; else overwrite
           price: copy[existingIndex].price || item.price,
         };
         return copy;
@@ -220,16 +242,14 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     });
   };
 
-  const addToWishlist = (rawItem: CartItemRaw) => {
-    const item = normalizeRawItem(rawItem);
+  const addToWishlist = (raw: CartItemRaw) => {
+    const item = normalizeRawItem(raw);
     item.active = false;
-
+    const identifier = String(item.productId ?? item.id);
     setCartItems((prev) => {
-      const identifier = item.productId ?? item.id;
       const existingIndex = prev.findIndex(
-        (i) => (i.productId ?? i.id) === identifier && i.active === false
+        (i) => String(i.productId ?? i.id) === identifier && i.active === false
       );
-
       if (existingIndex > -1) {
         const copy = [...prev];
         copy[existingIndex] = {
@@ -244,8 +264,9 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const removeFromCart = (idOrProductId: number | string) => {
+    const target = String(idOrProductId);
     setCartItems((prev) =>
-      prev.filter((i) => (i.productId ?? i.id) !== String(idOrProductId))
+      prev.filter((i) => String(i.productId ?? i.id) !== target)
     );
   };
 
@@ -254,24 +275,86 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     quantity: number
   ) => {
     const q = Math.max(1, Math.floor(quantity));
+    const target = String(idOrProductId);
     setCartItems((prev) =>
       prev.map((i) =>
-        (i.productId ?? i.id) === String(idOrProductId)
-          ? { ...i, quantity: q }
-          : i
+        String(i.productId ?? i.id) === target ? { ...i, quantity: q } : i
       )
     );
+  };
+
+  const clearCart = () => {
+    setCartItems((prev) => prev.filter((i) => !i.active));
+  };
+
+  /* coupon rules (client-side only; validate on server before charging) */
+  const couponRules: Record<
+    string,
+    { type: "percent" | "flat"; value: number; message?: string }
+  > = {
+    SAVE10: {
+      type: "percent",
+      value: 0.1,
+      message: "SAVE10 applied — 10% off",
+    },
+    WELCOME20: {
+      type: "percent",
+      value: 0.2,
+      message: "WELCOME20 applied — 20% off",
+    },
+    "12345": { type: "percent", value: 0.05, message: "Promo 12345 — 5% off" },
+  };
+
+  const applyCoupon = (code: string) => {
+    const c = (code ?? "").toString().trim().toUpperCase();
+    if (!c) {
+      setDiscount(0);
+      setCouponMessage("Please enter a coupon code.");
+      setCoupon("");
+      return;
+    }
+    const rule = couponRules[c];
+    if (!rule) {
+      setDiscount(0);
+      setCouponMessage("Invalid coupon code.");
+      setCoupon(c);
+      return;
+    }
+    if (rule.type === "percent") {
+      setDiscount(rule.value);
+      setCouponMessage(rule.message ?? `Coupon ${c} applied.`);
+      setCoupon(c);
+    } else {
+      // flat: translate to percent relative to subtotal
+      const flat = rule.value;
+      const percent = subtotal > 0 ? Math.min(flat / subtotal, 1) : 0;
+      setDiscount(percent);
+      setCouponMessage(rule.message ?? `Coupon ${c} applied.`);
+      setCoupon(c);
+    }
   };
 
   return (
     <CartContext.Provider
       value={{
         cartItems,
+        activeCartItems,
+        wishlistItems,
         addToCart,
         addToWishlist,
         removeFromCart,
         updateItemQuantity,
+        clearCart,
         isCartLoaded,
+        subtotal,
+        discount,
+        finalTotal,
+        FREE_SHIPPING_THRESHOLD,
+        coupon,
+        couponMessage,
+        applyCoupon,
+        setCoupon,
+        setCouponMessage,
       }}
     >
       {children}

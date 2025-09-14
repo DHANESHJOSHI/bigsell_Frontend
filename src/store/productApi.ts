@@ -1,7 +1,9 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import type { RootState as IRootState } from "@/store";
 
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || "https://bigsell-backend.vercel.app/v1/api";
+const baseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "https://bigsell-backend.vercel.app/v1/api";
 /**
  * Product model returned by backend.
  */
@@ -16,10 +18,12 @@ export interface IProducts {
   discount?: number;
   discountType?: "percentage" | "flat" | "fixed" | "other" | "";
   sku?: string;
-  category?: {
-    _id: string;
-    title: string;
-  } | string;
+  category?:
+    | {
+        _id: string;
+        title: string;
+      }
+    | string;
   subcategory?: string;
   brand?: string;
   images?: string[];
@@ -122,9 +126,9 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            productListTag(),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              productListTag(),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [productListTag()],
     }),
 
@@ -147,9 +151,9 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            productListTag(),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              productListTag(),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [productListTag()],
     }),
 
@@ -161,16 +165,16 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            featuredTag(),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              featuredTag(),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [featuredTag()],
     }),
 
     // Trending products
     getTrendingProducts: builder.query<IProducts[], number | void>({
       query: (limit) => {
-        const params = limit ? `?limit=${limit}` : '';
+        const params = limit ? `?limit=${limit}` : "";
         return `/products/trending${params}`;
       },
       transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
@@ -178,9 +182,9 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            trendingTag(),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              trendingTag(),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [trendingTag()],
     }),
 
@@ -192,16 +196,16 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            newArrivalsTag(),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              newArrivalsTag(),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [newArrivalsTag()],
     }),
 
     // Weekly best selling products
     getWeeklyBestSellingProducts: builder.query<IProducts[], number | void>({
       query: (limit) => {
-        const params = limit ? `?limit=${limit}` : '';
+        const params = limit ? `?limit=${limit}` : "";
         return `/products/weekly-best-selling${params}`;
       },
       transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
@@ -209,16 +213,16 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            productTag("WEEKLY_BESTSELLING"),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              productTag("WEEKLY_BESTSELLING"),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [productTag("WEEKLY_BESTSELLING")],
     }),
 
     // Discount products
     getDiscountProducts: builder.query<IProducts[], number | void>({
       query: (limit) => {
-        const params = limit ? `?limit=${limit}` : '';
+        const params = limit ? `?limit=${limit}` : "";
         return `/products/discount${params}`;
       },
       transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
@@ -226,16 +230,16 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            productTag("DISCOUNT"),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              productTag("DISCOUNT"),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [productTag("DISCOUNT")],
     }),
 
     // Weekly discount products
     getWeeklyDiscountProducts: builder.query<IProducts[], number | void>({
       query: (limit) => {
-        const params = limit ? `?limit=${limit}` : '';
+        const params = limit ? `?limit=${limit}` : "";
         return `/products/weekly-discount${params}`;
       },
       transformResponse: (response: ApiResponse<IProducts | IProducts[]>) =>
@@ -243,9 +247,9 @@ export const productsApi = createApi({
       providesTags: (result) =>
         result && result.length
           ? [
-            productTag("WEEKLY_DISCOUNT"),
-            ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
-          ]
+              productTag("WEEKLY_DISCOUNT"),
+              ...result.map((p) => productTag(p._id ?? "UNKNOWN")),
+            ]
           : [productTag("WEEKLY_DISCOUNT")],
     }),
 
@@ -264,11 +268,11 @@ export const productsApi = createApi({
       providesTags: (result, _error, categoryId) =>
         result && result.length
           ? [
-            categoryTag(categoryId),
-            ...result.map((p) =>
-              productTag(p._id ?? `CATEGORY_${categoryId}`)
-            ),
-          ]
+              categoryTag(categoryId),
+              ...result.map((p) =>
+                productTag(p._id ?? `CATEGORY_${categoryId}`)
+              ),
+            ]
           : [categoryTag(categoryId)],
     }),
 
