@@ -144,7 +144,7 @@ const CartDropdown: React.FC = () => {
                 </p>
               ) : (
                 <p className="text-success mt-2">
-                  🎉 <span>Free Shipping</span> unlocked!
+                  <span>Free Shipping</span> unlocked!
                 </p>
               )}
 
