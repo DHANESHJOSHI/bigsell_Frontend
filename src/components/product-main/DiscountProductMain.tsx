@@ -5,60 +5,70 @@ import { useCart } from "@/components/header/CartContext";
 import { useWishlist } from "@/components/header/WishlistContext";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import Image from "next/image";
 
 interface BlogGridMainProps {
-  Slug: string;
+  id?: number | string;
+  Slug?: string;
   ProductImage: string;
   ProductTitle?: string;
-  Price?: string;
-  del?: string;
+  Price?: string | number;
+  del?: string | number;
   material?: string;
   productData?: any;
+  discount?: number;
 }
 
 const BlogGridMain: React.FC<BlogGridMainProps> = ({
+  id,
   Slug,
   ProductImage,
   ProductTitle,
   Price,
   del,
   material,
+  discount = 0,
   productData,
 }) => {
   const [added, setAdded] = useState(false);
-
   const { addToCart } = useCart();
 
+  // FIXED: use correct optional chaining syntax: productData?._id (not productData?.._id)
+  const productId: string | number =
+    productData?._id ?? productData?.id ?? id ?? `temp-${Date.now()}`;
+
+  const finalPrice: number = (() => {
+    const p = productData?.price ?? Price ?? 0;
+    return typeof p === "number" ? p : parseFloat(p?.toString() || "0");
+  })();
+
   const handleAdd = () => {
-    // Use productData.price if available, otherwise fallback to Price prop
-    const finalPrice = productData?.price ?? parseFloat(Price ?? "0");
-    
     addToCart({
-      id: Date.now(),
-      image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/discount-product/${ProductImage}`,
-      title: productData?.name || (ProductTitle ?? "Default Product Title"),
+      id: productId,
+      image:
+        productData?.thumbnail ||
+        productData?.images?.[0] ||
+        `/assets/images/discount-product/${ProductImage}`,
+      title: productData?.name || ProductTitle || "Default Product Title",
       price: finalPrice,
       quantity: 1,
       active: true,
+      category: productData?.category?.title || productData?.category,
     });
-
     setAdded(true);
-    setTimeout(() => setAdded(false), 5000); // reset after 2 seconds
+    setTimeout(() => setAdded(false), 5000);
   };
 
   const { addToWishlist } = useWishlist();
   const handleWishlist = () => {
-    // Use productData.price if available, otherwise fallback to Price prop
-    const finalPrice = productData?.price ?? parseFloat(Price ?? "0");
-    
     addToWishlist({
-      id: Date.now(),
-      image: productData?.thumbnail || productData?.images?.[0] || `/assets/images/discount-product/${ProductImage}`,
-      title: productData?.name || (ProductTitle ?? "Default Product Title"),
+      id: productId,
+      image:
+        productData?.thumbnail || productData?.images?.[0] || `${ProductImage}`,
+      title: productData?.name || ProductTitle || "Default Product Title",
       price: finalPrice,
       quantity: 1,
     });
+    toast("Added to wishlist");
   };
 
   useEffect(() => {
@@ -68,7 +78,7 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
       if (!parent) return;
 
       const input = parent.querySelector(".input") as HTMLInputElement | null;
-      const addToCart = parent.querySelector(
+      const addToCartEl = parent.querySelector(
         "a.add-to-cart"
       ) as HTMLElement | null;
       if (!input) return;
@@ -83,8 +93,8 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
       }
 
       input.value = newVal.toString();
-      if (addToCart) {
-        addToCart.setAttribute("data-quantity", newVal.toString());
+      if (addToCartEl) {
+        addToCartEl.setAttribute("data-quantity", newVal.toString());
       }
     };
 
@@ -102,38 +112,48 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
     };
   }, []);
 
-  // tostify
-  const compare = () => toast("Successfully Add To Compare !");
   const addcart = () => toast("Successfully Add To Cart !");
 
   return (
     <>
-      <Link href={`/shop/${Slug}`} className="thumbnail-preview">
+      <Link href={`/shop/${productId}`} className="thumbnail-preview">
         <div className="badge">
           <span>
-            75% <br />
+            {discount}% <br />
             Off
           </span>
           <i className="fa-solid fa-bookmark" />
         </div>
-        <Image
+        <img
           width={300}
           height={300}
-          src={`/assets/images/discount-product/${ProductImage}`}
-          alt="grocery"
+          src={
+            productData?.thumbnail ||
+            productData?.images?.[0] ||
+            `${ProductImage}`
+          }
+          alt={productData?.name || ProductTitle || "grocery"}
         />
       </Link>
+
       <div className="body-content">
-        <Link href={`/shop/${Slug}`}>
+        <Link href={`/shop/${productId}`}>
           <h4 className="title">
-            {ProductTitle?.slice(0, 40).concat("...") ??
-              "How to growing your business"}
+            {(
+              (productData?.name ||
+                ProductTitle ||
+                "How to growing your business") as string
+            )
+              .slice(0, 40)
+              .concat("...")}
           </h4>
         </Link>
-        <span className="availability">{material}</span>
+        <span className="availability">{material || productData?.brand}</span>
         <div className="price-area">
-          <span className="current">{`₹ ${Price}`}</span>
-          <div className="previous d-none d-md-block">{`₹ ${del}`}</div>
+          <span className="current">{`₹ ${finalPrice}`}</span>
+          <div className="previous d-none d-md-block">{`₹ ${
+            productData?.originalPrice ?? del ?? ""
+          }`}</div>
         </div>
         <div className="cart-counter-action">
           <Link
@@ -163,6 +183,8 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
           </Link>
         </div>
       </div>
+
+      <ToastContainer position="bottom-right" />
     </>
   );
 };

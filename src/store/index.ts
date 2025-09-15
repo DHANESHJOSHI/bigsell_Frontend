@@ -16,6 +16,8 @@ import { contactApi } from "./contactApi";
 import { vendorPolicyApi } from "./vendorPolicyApi";
 import { headerBannerApi } from "./headerBannerApi";
 import { mainBannerApi } from "./mainBannerApi";
+import { ordersApi } from "./ordersApi";
+import { paymentsApi } from "./paymentApi";
 
 export const store = configureStore({
   reducer: {
@@ -36,6 +38,10 @@ export const store = configureStore({
     [vendorPolicyApi.reducerPath]: vendorPolicyApi.reducer,
     [headerBannerApi.reducerPath]: headerBannerApi.reducer,
     [mainBannerApi.reducerPath]: mainBannerApi.reducer,
+
+    // NEW reducers
+    [ordersApi.reducerPath]: ordersApi.reducer,
+    [paymentsApi.reducerPath]: paymentsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -54,7 +60,9 @@ export const store = configureStore({
       contactApi.middleware,
       vendorPolicyApi.middleware,
       headerBannerApi.middleware,
-      mainBannerApi.middleware
+      mainBannerApi.middleware,
+      ordersApi.middleware,
+      paymentsApi.middleware
     ),
 });
 

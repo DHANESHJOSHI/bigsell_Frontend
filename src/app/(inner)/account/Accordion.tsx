@@ -1,13 +1,9 @@
-// components/account/AccountTabs.tsx
 "use client";
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import axios from "axios";
 import { useRouter } from "next/navigation";
-
-const API =
-  process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:8080/v1/api";
+import { useGetMyOrdersQuery } from "@/store/ordersApi"; // <-- import RTK hook
 
 // helper: decode JWT
 const decodeToken = (token: string) => {
@@ -32,21 +28,8 @@ const AccountTabs = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
 
   const [user, setUser] = useState<any>(null);
-  const [orders, setOrders] = useState<any[]>([]);
-  const [addresses, setAddresses] = useState<{ billing: any; shipping: any }>({
-    billing: null,
-    shipping: null,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
 
-  const getAuthHeaders = (token: string) => ({
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
+  // Grab token for auth check
   useEffect(() => {
     const token =
       typeof window !== "undefined" && localStorage.getItem("authToken");
@@ -56,83 +39,21 @@ const AccountTabs = () => {
       return;
     }
 
-    let cancelled = false;
-
     const decoded = decodeToken(token);
     if (decoded) {
-      console.log("[AccountTabs] Decoded token user:", decoded);
       setUser((prev: any) => prev || decoded);
     }
-
-    const fetchAll = async () => {
-      setLoading(true);
-      setError("");
-
-      try {
-        // --- USER PROFILE (fresh data) ---
-        let userData: any = null;
-        try {
-          const res = await axios.get(`${API}/auth/me`, getAuthHeaders(token));
-
-          userData = res.data;
-          setUser(userData?.user || userData);
-        } catch (uErr: any) {}
-
-        // --- ORDERS ---
-        let ordersData: any = null;
-        try {
-          const resOrders = await axios.get(
-            `${API}/orders/my-orders`,
-            getAuthHeaders(token)
-          );
-          ordersData = resOrders.data;
-          console.log("Fetched orders:", ordersData);
-        } catch (oErr: any) {
-          setError("Failed to fetch orders.");
-        }
-
-        if (cancelled) return;
-
-        setOrders(
-          Array.isArray(ordersData?.orders)
-            ? ordersData.orders
-            : ordersData || []
-        );
-
-        if (userData?.user?.billing || userData?.user?.shipping) {
-          setAddresses({
-            billing: userData.user.billing || null,
-            shipping: userData.user.shipping || null,
-          });
-        }
-      } catch (err: any) {
-        const status = err?.response?.status;
-        if (status === 401 || status === 403) {
-          localStorage.removeItem("authToken");
-          router.push("/login");
-          return;
-        }
-        setError(
-          err?.response?.data?.message || "Failed to load account data."
-        );
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-
-    fetchAll();
-
-    return () => {
-      cancelled = true;
-    };
   }, [router]);
+
+  // 🔥 Orders via RTK Query
+  const { data: orders = [], error, isLoading } = useGetMyOrdersQuery();
 
   const handleLogout = () => {
     localStorage.removeItem("authToken");
     router.push("/login");
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="account-tab-area-start rts-section-gap">
         <div className="container-2">
@@ -194,11 +115,11 @@ const AccountTabs = () => {
           {/* Content */}
           <div className="col-lg-9 pl--50 pl_md--10 pl_sm--10 pt_md--30 pt_sm--30">
             <div className="tab-content">
-              {error && (
+              {/* {error && (
                 <div className="alert alert-danger" role="alert">
-                  {error}
+                  Failed to fetch orders.
                 </div>
-              )}
+              )} */}
 
               {activeTab === "dashboard" && (
                 <div className="dashboard-account-area">
@@ -242,8 +163,8 @@ const AccountTabs = () => {
                               </td>
                               <td>{o.status}</td>
                               <td>
-                                {o.total
-                                  ? `₹ ${o.total} for ${
+                                {o.totalAmount
+                                  ? `₹ ${o.totalAmount} for ${
                                       o.items?.length || 0
                                     } item(s)`
                                   : "-"}
