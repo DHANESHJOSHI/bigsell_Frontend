@@ -1,3 +1,4 @@
+// src/app/(your-path)/page.tsx OR wherever your ShopContent file lives
 "use client";
 import HeaderOne from "@/components/header/HeaderOne";
 import { useState, Suspense, useMemo, useEffect } from "react";
@@ -30,53 +31,99 @@ interface PostType {
   productData?: any; // Store original product data
 }
 
+/**
+ * Robust thumbnail resolver:
+ * - Handles product.thumbnail as string or object
+ * - Handles product.images as array of strings or array of objects({ url, src, path })
+ * - Falls back to product.image
+ * - Permanent fallback to /images/default.jpg (place in public/)
+ */
+const resolveThumbnail = (product: any): string => {
+  // 1) product.thumbnail often is string or { url } or { src }
+  if (product?.thumbnail) {
+    if (typeof product.thumbnail === "string") return product.thumbnail;
+    if (typeof product.thumbnail === "object") {
+      return (
+        product.thumbnail.url ||
+        product.thumbnail.src ||
+        product.thumbnail.path ||
+        JSON.stringify(product.thumbnail) // last resort; probably not desired but stops undefined
+      );
+    }
+  }
+
+  // 2) product.images could be ['url', ...] OR [{ url, src }, ...]
+  if (Array.isArray(product?.images) && product.images.length > 0) {
+    const first = product.images[0];
+    if (typeof first === "string") return first;
+    if (typeof first === "object") {
+      return first.url || first.src || first.path || first.filename || "";
+    }
+  }
+
+  // 3) product.image field
+  if (product?.image && typeof product.image === "string") return product.image;
+
+  // 4) common nested cases: product.media?.thumbnail etc.
+  if (product?.media?.thumbnail) {
+    const t = product.media.thumbnail;
+    if (typeof t === "string") return t;
+    if (typeof t === "object") return t.url || t.src || "";
+  }
+
+  // 5) final fallback to public image
+  return "/images/default.jpg";
+};
+
 const transformProductToPost = (product: any): PostType => {
   const name =
-    typeof product.name === "object"
-      ? product.name.title || product.name._id || "Unknown Product"
-      : product.name || product.title || "Unknown Product";
+    typeof product?.name === "object"
+      ? product.name.title ||
+        product.name._id ||
+        product.name.name ||
+        "Unknown Product"
+      : product?.name || product?.title || "Unknown Product";
 
   const category =
-    typeof product.category === "object"
-      ? product.category.title || product.category._id || "Unknown"
-      : product.category || "Unknown";
+    typeof product?.category === "object"
+      ? product.category.title ||
+        product.category._id ||
+        product.category.name ||
+        "Unknown"
+      : product?.category || "Unknown";
 
-  const price =
-    typeof product.price === "object"
-      ? product.price.amount || product.price.value || 0
-      : product.price || 0;
+  const priceValue =
+    typeof product?.price === "object"
+      ? product.price.amount ?? product.price.value ?? 0
+      : product?.price ?? 0;
 
-  const originalPrice =
-    typeof product.originalPrice === "object"
-      ? product.originalPrice.amount || product.originalPrice.value || 0
-      : product.originalPrice || 0;
+  const originalPriceValue =
+    typeof product?.originalPrice === "object"
+      ? product.originalPrice.amount ?? product.originalPrice.value ?? 0
+      : product?.originalPrice ?? priceValue;
 
-  const discount =
-    typeof product.discount === "object"
-      ? product.discount || 0
-      : product.discount || 0;
+  const discountValue =
+    typeof product?.discount === "object"
+      ? product?.discount ?? 0
+      : product?.discount ?? 0;
 
-  const thumbnail =
-    product.thumbnail ||
-    (product.images && product.images[0]) ||
-    product.image ||
-    "default.jpg";
+  const thumbnail = resolveThumbnail(product);
 
   return {
-    id: product._id || product.sku || "",
-    category: category,
+    id: product?._id || product?.sku || String(product?.id || ""),
+    category,
     slug:
-      product.slug ||
-      (name + "-" + (product._id || "")).toLowerCase().replace(/\s+/g, "-"),
-    image: thumbnail,
+      product?.slug ||
+      (name + "-" + (product?._id || "")).toLowerCase().replace(/\s+/g, "-"),
+    image: thumbnail || "/images/default.jpg",
     title: name,
-    price: price.toString(),
-    originalPrice: originalPrice.toString(),
-    discount: discount,
-    discountType: product.discountType || "percentage",
-    color: product.colors || [],
-    size: product.sizes || [],
-    productData: product, // Store original product data
+    price: String(priceValue ?? 0),
+    originalPrice: String(originalPriceValue ?? 0),
+    discount: Number(discountValue ?? 0),
+    discountType: product?.discountType || "percentage",
+    color: product?.colors || product?.variants?.colors || [],
+    size: product?.sizes || product?.variants?.sizes || [],
+    productData: product, // Store original product data so detail components can use raw structure
   };
 };
 
@@ -133,10 +180,14 @@ function ShopContent() {
         setMaxPrice(Math.ceil(apiPriceMax));
       }
     }
-  }, [apiPriceMin, apiPriceMax, minPrice, maxPrice]);
+    // we intentionally do not include minPrice/maxPrice in dependency list to avoid loops
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [apiPriceMin, apiPriceMax]);
 
   const shouldUseFallback =
     !!productsError || (Array.isArray(allProducts) && allProducts.length === 0);
+
+  // Fallback products normalized so UI always receives consistent shape
   const fallbackProducts = shouldUseFallback
     ? (allProducts || []).map((p: any, index: number) => ({
         name: p.title || "Unknown Product",
@@ -144,12 +195,12 @@ function ShopContent() {
         category: p.category || "Unknown",
         brand: "Local Brand",
         sku: p.slug || `product-${index}`,
-        thumbnail: p.image || "default.jpg",
-        images: [p.image || "default.jpg"],
+        thumbnail: p.image || "/images/default.jpg",
+        images: [p.image || "/images/default.jpg"],
         description: "Local product description",
         shortDescription: "Local product",
         originalPrice: (parseFloat(String(p.price || 0)) || 0) * 1.2,
-        discount: p.discount,
+        discount: p.discount || 0,
         discountType: p.discountType ? "percentage" : "fixed",
         stock: 100,
         minStock: 10,
@@ -186,9 +237,7 @@ function ShopContent() {
       if (p && p.category) {
         const category =
           typeof p.category === "object"
-            ? (p.category as any).title ||
-              (p.category as any)._id ||
-              (p.category as any).name
+            ? p.category.title || p.category._id || p.category.name
             : p.category;
         if (category && typeof category === "string") categories.add(category);
       }
@@ -203,9 +252,7 @@ function ShopContent() {
       if (p && p.brand) {
         const brand =
           typeof p.brand === "object"
-            ? (p.brand as any).title ||
-              (p.brand as any)._id ||
-              (p.brand as any).name
+            ? p.brand.title || p.brand._id || p.brand.name
             : p.brand;
         if (brand && typeof brand === "string") brands.add(brand);
       }
@@ -286,9 +333,7 @@ function ShopContent() {
             : "unknown");
         const brand =
           typeof p.brand === "object"
-            ? (p.brand as any).title ||
-              (p.brand as any)._id ||
-              (p.brand as any).name
+            ? p.brand.title || p.brand._id || p.brand.name
             : p.brand;
         brandsMap.set(slug, brand);
       });
@@ -325,8 +370,6 @@ function ShopContent() {
 
   const handlePriceFilterSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // We already set min/max locally; if you want to call an API to apply server-side filters,
-    // trigger that query here (e.g. refetch product list with query params).
   };
 
   // Loading / error states

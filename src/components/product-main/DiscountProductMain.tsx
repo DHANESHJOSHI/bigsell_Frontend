@@ -59,17 +59,17 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
   };
 
   const { addToWishlist } = useWishlist();
-  const handleWishlist = () => {
-    addToWishlist({
-      id: productId,
-      image:
-        productData?.thumbnail || productData?.images?.[0] || `${ProductImage}`,
-      title: productData?.name || ProductTitle || "Default Product Title",
-      price: finalPrice,
-      quantity: 1,
-    });
-    toast("Added to wishlist");
-  };
+  // const handleWishlist = () => {
+  //   addToWishlist({
+  //     id: productId,
+  //     image:
+  //       productData?.thumbnail || productData?.images?.[0] || `${ProductImage}`,
+  //     title: productData?.name || ProductTitle || "Default Product Title",
+  //     price: finalPrice,
+  //     quantity: 1,
+  //   });
+  //   toast("Added to wishlist");
+  // };
 
   useEffect(() => {
     const handleQuantityClick = (e: Event) => {

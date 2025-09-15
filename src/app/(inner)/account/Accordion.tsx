@@ -154,7 +154,7 @@ const AccountTabs = () => {
                       <tbody>
                         {orders && orders.length > 0 ? (
                           orders.map((o) => (
-                            <tr key={o._id || o.id}>
+                            <tr key={o._id || null}>
                               <td>{o.orderNumber || `#${o._id?.slice(-6)}`}</td>
                               <td>
                                 {o.createdAt

@@ -58,14 +58,23 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
     );
   };
 
-  const stableId = (): string | number =>
-    productData?._id ?? Slug ?? Date.now();
+  /**
+   * stableId -> ALWAYS return a number.
+   * Try to coerce productData?._id or Slug into a number.
+   * If coercion yields NaN (e.g. Mongo ObjectId or arbitrary slug),
+   * fallback to Date.now() to guarantee a numeric id for client-side usage.
+   */
+  const stableId = (): number => {
+    const raw = (productData?._id as any) ?? Slug ?? Date.now();
+    const n = Number(raw);
+    return Number.isFinite(n) && !Number.isNaN(n) ? n : Date.now();
+  };
 
   const handleAdd = () => {
     const finalPrice = getFinalPrice();
     addToCart({
       id: stableId(),
-      productId: productData?._id ?? undefined,
+      productId: (productData?._id as any) ?? undefined,
       image: getImageSrc(),
       title: productData?.name || ProductTitle || "Default Product Title",
       price: finalPrice,
@@ -80,7 +89,7 @@ const BlogGridMain: React.FC<BlogGridMainProps> = ({
     const finalPrice = getFinalPrice();
     addToWishlist({
       id: stableId(),
-      productId: productData?._id ?? undefined,
+      //  productId: (productData?._id as any) ?? undefined,
       image: getImageSrc(),
       title: productData?.name || ProductTitle || "Default Product Title",
       price: finalPrice,

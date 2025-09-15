@@ -39,10 +39,11 @@ const CartMain: React.FC = () => {
     setCouponMessage("");
   };
 
-  const progressPercentage = Math.min(
-    (subtotal / FREE_SHIPPING_THRESHOLD) * 100,
-    100
-  );
+  // Guard against division by zero or falsy threshold
+  const progressPercentage =
+    FREE_SHIPPING_THRESHOLD && FREE_SHIPPING_THRESHOLD > 0
+      ? Math.min((subtotal / FREE_SHIPPING_THRESHOLD) * 100, 100)
+      : 100;
 
   return (
     <div className="rts-cart-area rts-section-gap bg_light-1">
@@ -94,121 +95,126 @@ const CartMain: React.FC = () => {
                   </a>
                 </div>
               ) : (
-                activeCartItems.map((item) => (
-                  <div
-                    className="single-cart-area-list main item-parent d-flex align-items-center"
-                    key={`${item.id}-${item.selectedColor || ""}-${
-                      item.selectedSize || ""
-                    }`}
-                  >
+                activeCartItems.map((item) => {
+                  // read optional fields via a safe cast — avoids TS errors without changing runtime
+                  const selectedColor = (item as any).selectedColor;
+                  const selectedSize = (item as any).selectedSize;
+
+                  return (
                     <div
-                      className="product-main-cart"
-                      style={{ flex: 3, display: "flex", alignItems: "center" }}
+                      className="single-cart-area-list main item-parent d-flex align-items-center"
+                      key={`${item.productId ?? item.id}-cart-item`}
                     >
                       <div
-                        className="close section-activation"
-                        onClick={() =>
-                          removeFromCart(item.productId ?? item.id)
-                        }
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            removeFromCart(item.productId ?? item.id);
-                          }
+                        className="product-main-cart"
+                        style={{
+                          flex: 3,
+                          display: "flex",
+                          alignItems: "center",
                         }}
-                        style={{ marginRight: 12, cursor: "pointer" }}
                       >
-                        <i className="fa-regular fa-x" />
-                      </div>
-                      <div
-                        className="thumbnail"
-                        style={{ width: 80, marginRight: 12 }}
-                      >
-                        <img
-                          src={item.image}
-                          alt={item.title}
-                          style={{ maxWidth: "100%" }}
-                        />
-                      </div>
-                      <div className="information">
-                        <h6 className="title">{item.title}</h6>
-                        <div className="product-details">
-                          <span>SKU: SKUZNFER</span>
-                          {/* variants if present */}
-                          {/** @ts-ignore */}
-                          {item.selectedColor && (
-                            <span className="ms-2">
-                              Color: {item.selectedColor}
-                            </span>
-                          )}
-                          {/** @ts-ignore */}
-                          {item.selectedSize && (
-                            <span className="ms-2">
-                              Size: {item.selectedSize}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="price" style={{ flex: 1 }}>
-                      <p>₹ {item.price.toFixed(2)}</p>
-                    </div>
-
-                    <div className="quantity" style={{ flex: 1 }}>
-                      <div className="quantity-edit d-flex align-items-center">
-                        <input
-                          type="number"
-                          className="input"
-                          value={item.quantity}
-                          onChange={(e) => {
-                            const newQuantity = Math.max(
-                              1,
-                              parseInt(e.target.value) || 1
-                            );
-                            updateItemQuantity(
-                              item.productId ?? item.id,
-                              newQuantity
-                            );
+                        <div
+                          className="close section-activation"
+                          onClick={() =>
+                            removeFromCart(item.productId ?? item.id)
+                          }
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              removeFromCart(item.productId ?? item.id);
+                            }
                           }}
-                          min={1}
-                          style={{ width: 70, marginRight: 8 }}
-                        />
-                        <div className="button-wrapper-action d-flex flex-column">
-                          <button
-                            className="button minus"
-                            onClick={() =>
-                              item.quantity > 1 &&
-                              updateItemQuantity(
-                                item.productId ?? item.id,
-                                item.quantity - 1
-                              )
-                            }
-                            disabled={item.quantity <= 1}
-                          >
-                            <i className="fa-regular fa-chevron-down" />
-                          </button>
-                          <button
-                            className="button plus"
-                            onClick={() =>
-                              updateItemQuantity(
-                                item.productId ?? item.id,
-                                item.quantity + 1
-                              )
-                            }
-                          >
-                            <i className="fa-regular fa-chevron-up" />
-                          </button>
+                          style={{ marginRight: 12, cursor: "pointer" }}
+                        >
+                          <i className="fa-regular fa-x" />
+                        </div>
+                        <div
+                          className="thumbnail"
+                          style={{ width: 80, marginRight: 12 }}
+                        >
+                          <img
+                            src={item.image}
+                            alt={item.title}
+                            style={{ maxWidth: "100%" }}
+                          />
+                        </div>
+                        <div className="information">
+                          <h6 className="title">{item.title}</h6>
+                          <div className="product-details">
+                            <span>SKU: SKUZNFER</span>
+                            {selectedColor && (
+                              <span className="ms-2">
+                                Color: {selectedColor}
+                              </span>
+                            )}
+                            {selectedSize && (
+                              <span className="ms-2">Size: {selectedSize}</span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="subtotal" style={{ flex: 1 }}>
-                      <p>₹ {(item.price * item.quantity).toFixed(2)}</p>
+                      <div className="price" style={{ flex: 1 }}>
+                        <p>₹ {item.price.toFixed(2)}</p>
+                      </div>
+
+                      <div className="quantity" style={{ flex: 1 }}>
+                        <div className="quantity-edit d-flex align-items-center">
+                          <input
+                            type="number"
+                            className="input"
+                            value={item.quantity}
+                            onChange={(e) => {
+                              const newQuantity = Math.max(
+                                1,
+                                parseInt(e.target.value) || 1
+                              );
+                              updateItemQuantity(
+                                item.productId ?? item.id,
+                                newQuantity
+                              );
+                            }}
+                            min={1}
+                            style={{ width: 70, marginRight: 8 }}
+                          />
+                          <div className="button-wrapper-action d-flex flex-column">
+                            <button
+                              type="button"
+                              className="button minus"
+                              onClick={() =>
+                                item.quantity > 1 &&
+                                updateItemQuantity(
+                                  item.productId ?? item.id,
+                                  item.quantity - 1
+                                )
+                              }
+                              disabled={item.quantity <= 1}
+                            >
+                              <i className="fa-regular fa-chevron-down" />
+                            </button>
+                            <button
+                              type="button"
+                              className="button plus"
+                              onClick={() =>
+                                updateItemQuantity(
+                                  item.productId ?? item.id,
+                                  item.quantity + 1
+                                )
+                              }
+                            >
+                              <i className="fa-regular fa-chevron-up" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="subtotal" style={{ flex: 1 }}>
+                        <p>₹ {(item.price * item.quantity).toFixed(2)}</p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
 
               {/* Coupon + Clear */}
@@ -245,6 +251,7 @@ const CartMain: React.FC = () => {
                 )}
 
                 <button
+                  type="button"
                   onClick={clearCart}
                   className="rts-btn btn-primary ms-3"
                   disabled={activeCartItems.length === 0}
@@ -303,6 +310,7 @@ const CartMain: React.FC = () => {
                 </div>
                 <div className="button-area mt-3">
                   <button
+                    type="button"
                     className="rts-btn btn-primary w-100"
                     disabled={activeCartItems.length === 0}
                   >
