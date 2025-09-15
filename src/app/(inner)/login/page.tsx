@@ -7,7 +7,7 @@ import Team from "@/components/about/Team";
 import ServiceOne from "@/components/service/ServiceOne";
 import TestimonilsOne from "@/components/testimonials/TestimonilsOne";
 import ShortService from "@/components/service/ShortService";
-
+import { generalSettingsApi } from "@/store/generalSettings";
 import FooterOne from "@/components/footer/FooterOne";
 import { useState } from "react";
 import axios from "axios";
@@ -29,7 +29,8 @@ export default function Home() {
       [e.target.id]: e.target.value,
     });
   };
-
+  const { data: settings } = generalSettingsApi.useGetGeneralSettingsQuery();
+  console.log(settings);
   const handleSubmit = async (e: any) => {
     e.preventDefault();
     setLoading(true);
@@ -91,7 +92,7 @@ export default function Home() {
                   <div className="logo-area mb--0">
                     <img
                       className="mb--10"
-                      src="assets/images/logo/fav.png"
+                      src="https://res.cloudinary.com/drulco0au/image/upload/v1757665542/restaurant-uploads/ky5oucgmhlroyxcxstyr.png"
                       alt="logo"
                     />
                   </div>
